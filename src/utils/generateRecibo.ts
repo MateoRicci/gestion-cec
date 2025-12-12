@@ -66,7 +66,7 @@ function getImageBase64(imageUrl: string): Promise<string> {
 }
 
 export async function generateRecibo(data: ReciboData): Promise<void> {
-  const { cliente, detalleItems, puntoDeVenta, metodoPago, numeroRecibo } = data;
+  const { cliente, detalleItems, metodoPago, numeroRecibo } = data;
 
   // Crear instancia de jsPDF en formato A4
   const doc = new jsPDF({
@@ -77,7 +77,6 @@ export async function generateRecibo(data: ReciboData): Promise<void> {
 
   // Configuración de márgenes y espaciado
   const pageWidth = 210; // Ancho A4 en mm
-  const pageHeight = 297; // Alto A4 en mm
   const marginLeft = 20;
   const marginRight = 20;
   const marginTop = 20;
