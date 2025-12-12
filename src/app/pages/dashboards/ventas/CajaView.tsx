@@ -3,7 +3,7 @@ import { useAuthContext } from "@/app/contexts/auth/context";
 import { ConfirmModal } from "@/components/shared/ConfirmModal";
 import { useCajaActions } from "./hooks/useCajaActions";
 import { useMovimientos } from "./hooks/useMovimientos";
-import { useMovimientosCaja } from "./hooks/useMovimientosCaja";
+import { invalidateMovimientosCaja } from "./hooks/useMovimientosCaja";
 import { CajaHeader } from "./components/CajaHeader";
 import { CajaEstado } from "./components/CajaEstado";
 import { CajaControls } from "./components/CajaControls";
@@ -28,9 +28,6 @@ export function CajaView() {
   const cajaId = currentPv
     ? getCajaId(currentPv.id.toString())
     : null;
-
-  // Hook para obtener movimientos y refrescar
-  const { refetch: refetchMovimientos } = useMovimientosCaja(cajaId);
 
   // Hook para manejar acciones de abrir/cerrar caja
   const {
@@ -66,8 +63,8 @@ export function CajaView() {
 
     try {
       await confirmarMovimiento(cajaId, () => {
-        // Refrescar movimientos después de un movimiento exitoso
-        refetchMovimientos();
+        // Invalidar y refrescar todos los componentes que usan movimientos de caja
+        invalidateMovimientosCaja(cajaId);
       });
     } catch (error) {
       // El error ya se maneja en el hook
@@ -87,7 +84,7 @@ export function CajaView() {
               onPuntoDeVentaChange={setSelectedPuntoDeVentaId}
             />
 
-            <CajaEstado cajaAbierta={cajaAbierta} />
+            <CajaEstado cajaAbierta={cajaAbierta} cajaId={cajaId} />
 
             <CajaControls
               cajaAbierta={cajaAbierta}

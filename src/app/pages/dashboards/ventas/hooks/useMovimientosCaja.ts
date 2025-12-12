@@ -38,6 +38,16 @@ export interface MovimientoCaja {
 // Map global de tipos de movimiento (id -> nombre)
 let tiposMovimientoMap: Map<number, string> = new Map();
 
+// Sistema de invalidación global para refrescar todos los hooks cuando hay un cambio
+const invalidationListeners: Map<number | null, Set<() => void>> = new Map();
+
+export function invalidateMovimientosCaja(cajaId: number | null) {
+  const listeners = invalidationListeners.get(cajaId);
+  if (listeners) {
+    listeners.forEach((refetch) => refetch());
+  }
+}
+
 // Función para cargar los tipos de movimiento
 async function loadTiposMovimiento(): Promise<Map<number, string>> {
   try {
@@ -132,6 +142,22 @@ export function useMovimientosCaja(
   useEffect(() => {
     fetchMovimientos();
   }, [fetchMovimientos]);
+
+  // Registrar el listener para invalidación
+  useEffect(() => {
+    if (!invalidationListeners.has(cajaId)) {
+      invalidationListeners.set(cajaId, new Set());
+    }
+    const listeners = invalidationListeners.get(cajaId)!;
+    listeners.add(fetchMovimientos);
+
+    return () => {
+      listeners.delete(fetchMovimientos);
+      if (listeners.size === 0) {
+        invalidationListeners.delete(cajaId);
+      }
+    };
+  }, [cajaId, fetchMovimientos]);
 
   // Calcular ingresos, egresos y total (los egresos ya vienen negativos)
   const ingresos = movimientos

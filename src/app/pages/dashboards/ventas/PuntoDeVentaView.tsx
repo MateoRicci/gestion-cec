@@ -5,6 +5,7 @@ import { useVentasContext } from "@/app/contexts/ventas/context";
 import { useAuthContext } from "@/app/contexts/auth/context";
 import { useCajaActions } from "./hooks/useCajaActions";
 import { useMovimientos } from "./hooks/useMovimientos";
+import { invalidateMovimientosCaja } from "./hooks/useMovimientosCaja";
 import { ConfirmModal } from "@/components/shared/ConfirmModal";
 import { MovimientoModal } from "./components/MovimientoModal";
 import { ProductoPreciosModal } from "./components/ProductoPreciosModal";
@@ -261,7 +262,8 @@ export function PuntoDeVentaView() {
 
     try {
       await confirmarMovimiento(cajaId, () => {
-        // Sin refetch de movimientos en esta vista, solo ejecutar la acción
+        // Invalidar y refrescar todos los componentes que usan movimientos de caja
+        invalidateMovimientosCaja(cajaId);
       });
     } catch (error) {
       console.error("Error al confirmar movimiento:", error);
@@ -518,7 +520,7 @@ export function PuntoDeVentaView() {
           </div>
         </div>
 
-        <CajaEstado cajaAbierta={cajaAbierta} />
+        <CajaEstado cajaAbierta={cajaAbierta} cajaId={cajaId} />
 
         <CajaControls
           cajaAbierta={cajaAbierta}

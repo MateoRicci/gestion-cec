@@ -1,4 +1,4 @@
-import { Button, Input, Textarea, GhostSpinner } from "@/components/ui";
+import { Button, Input, Textarea } from "@/components/ui";
 import { MovimientoTipo } from "../hooks/useMovimientos";
 import { PuntoDeVenta } from "@/app/contexts/ventas/context";
 
@@ -124,15 +124,9 @@ export function MovimientoModal({
             className="h-8 px-3 text-xs"
             onClick={onConfirm}
             disabled={!monto || parseInt(monto.replace(/\D/g, ""), 10) <= 0 || loading}
+            loading={loading}
           >
-            {loading ? (
-              <div className="flex items-center gap-2">
-                <GhostSpinner variant="soft" className="size-4 border-2" />
-                <span>Confirmando...</span>
-              </div>
-            ) : (
-              "Confirmar"
-            )}
+            Confirmar
           </Button>
         </div>
       </div>
