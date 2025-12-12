@@ -100,7 +100,7 @@ export function ProductosTab() {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<ProductoFormData>(initialFormData);
-  const [formErrors, setFormErrors] = useState<Partial<ProductoFormData>>({});
+  const [formErrors, setFormErrors] = useState<Partial<Record<keyof ProductoFormData, string>>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingList, setIsLoadingList] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -262,7 +262,7 @@ export function ProductosTab() {
 
   // Validación del formulario
   const validateForm = (): boolean => {
-    const errors: Partial<ProductoFormData> = {};
+    const errors: Partial<Record<keyof ProductoFormData, string>> = {};
 
     if (!formData.nombre.trim()) {
       errors.nombre = "El nombre es requerido";

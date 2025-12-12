@@ -3,7 +3,7 @@ import { useEffect, ReactNode } from "react";
 
 // Local Imports
 import axios from "@/utils/axios";
-import { AuthProvider as AuthContext, AuthContextType } from "./context";
+import { AuthProvider as AuthContext } from "./context";
 import { useAuthStore } from "@/stores/authStore";
 
 // ----------------------------------------------------------------------

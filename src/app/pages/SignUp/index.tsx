@@ -273,7 +273,7 @@ export default function SignUp() {
                   <Controller
                     name="tipoDocumento"
                     control={step1Form.control}
-                    render={({ field: { ref, onChange, value, ...field } }) => (
+                    render={({ field: { onChange, value, ...field } }) => (
                       <div className="relative">
                         <Select
                           unstyled
@@ -286,7 +286,6 @@ export default function SignUp() {
                           onChange={(e) => onChange(Number(e.target.value))}
                           onBlur={field.onBlur}
                           name={field.name}
-                          ref={ref}
                           error={step1Form.formState.errors?.tipoDocumento?.message}
                         />
                         <div className="pointer-events-none absolute right-3 top-0 flex h-full items-center justify-center">

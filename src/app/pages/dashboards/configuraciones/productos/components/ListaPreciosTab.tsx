@@ -314,7 +314,6 @@ export function ListaPreciosTab() {
                           onClick={() => handleEdit(lista)}
                           color="neutral"
                           variant="flat"
-                          size="sm"
                           className="flex items-center gap-1"
                         >
                           <TbEdit className="size-4" />
@@ -324,7 +323,6 @@ export function ListaPreciosTab() {
                           onClick={() => handleDelete(lista.id)}
                           color="error"
                           variant="flat"
-                          size="sm"
                           className="flex items-center gap-1"
                         >
                           <TbTrash className="size-4" />

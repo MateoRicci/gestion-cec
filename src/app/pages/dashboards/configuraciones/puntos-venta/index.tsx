@@ -55,6 +55,7 @@ export default function PuntosDeVentaConfig() {
         id: pv.id,
         nombre: pv.nombre,
         descripcion: pv.descripcion || "",
+        estado: pv.estado,
       }));
 
       setPuntosDeVenta(puntosMapeados);
