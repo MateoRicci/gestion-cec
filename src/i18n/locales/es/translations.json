@@ -1,0 +1,17 @@
+{
+  "nav": {
+    "dashboards": {
+      "dashboards": "Paneles",
+      "home": "Inicio",
+      "ventas": "Ventas",
+      "configuraciones": "Configuraciones",
+      "configuraciones.puntosVenta": "Puntos de Venta",
+      "configuraciones.productos": "Productos"
+    },
+    "settings": {
+      "settings": "Configuración",
+      "general": "General",
+      "appearance": "Apariencia"
+    }
+  }
+}

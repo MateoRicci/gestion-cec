@@ -1,0 +1,136 @@
+import { useVentasContext } from "@/app/contexts/ventas/context";
+import { useAuthContext } from "@/app/contexts/auth/context";
+import { ConfirmModal } from "@/components/shared/ConfirmModal";
+import { useCajaActions } from "./hooks/useCajaActions";
+import { useMovimientos } from "./hooks/useMovimientos";
+import { useMovimientosCaja } from "./hooks/useMovimientosCaja";
+import { CajaHeader } from "./components/CajaHeader";
+import { CajaEstado } from "./components/CajaEstado";
+import { CajaControls } from "./components/CajaControls";
+import { CajaResumen } from "./components/CajaResumen";
+import { CajaMovimientos } from "./components/CajaMovimientos";
+import { MovimientoModal } from "./components/MovimientoModal";
+
+export function CajaView() {
+  const {
+    puntosDeVenta,
+    selectedPuntoDeVentaId,
+    setSelectedPuntoDeVentaId,
+    cajaAbierta,
+    getCajaId,
+  } = useVentasContext();
+  const { user } = useAuthContext();
+
+  const currentPv =
+    puntosDeVenta.find((pv) => pv.id.toString() === selectedPuntoDeVentaId) ||
+    puntosDeVenta[0];
+
+  const cajaId = currentPv
+    ? getCajaId(currentPv.id.toString())
+    : null;
+
+  // Hook para obtener movimientos y refrescar
+  const { refetch: refetchMovimientos } = useMovimientosCaja(cajaId);
+
+  // Hook para manejar acciones de abrir/cerrar caja
+  const {
+    showConfirmModal,
+    confirmLoading,
+    confirmState,
+    solicitarAbrirCaja,
+    solicitarCerrarCaja,
+    confirmarAccion,
+    getConfirmMessages,
+    closeConfirmModal,
+  } = useCajaActions(currentPv);
+
+  // Hook para manejar movimientos de efectivo
+  const {
+    showMovimientoModal,
+    movimientoTipo,
+    monto,
+    descripcion,
+    loading: movimientoLoading,
+    abrirModalMovimiento,
+    cerrarModalMovimiento,
+    setMonto,
+    setDescripcion,
+    confirmarMovimiento,
+  } = useMovimientos();
+
+  const handleConfirmarMovimiento = async () => {
+    if (!cajaId) {
+      console.error("No hay caja abierta");
+      return;
+    }
+
+    try {
+      await confirmarMovimiento(cajaId, () => {
+        // Refrescar movimientos después de un movimiento exitoso
+        refetchMovimientos();
+      });
+    } catch (error) {
+      // El error ya se maneja en el hook
+      console.error("Error al confirmar movimiento:", error);
+    }
+  };
+
+  return (
+    <section className="flex-1 pt-2">
+      <div className="flex flex-col gap-5">
+        <div className="flex justify-between gap-10">
+          {/* Columna izquierda: controles de caja */}
+          <div className="flex-1">
+            <CajaHeader
+              puntosDeVenta={puntosDeVenta}
+              selectedPuntoDeVentaId={selectedPuntoDeVentaId}
+              onPuntoDeVentaChange={setSelectedPuntoDeVentaId}
+            />
+
+            <CajaEstado cajaAbierta={cajaAbierta} />
+
+            <CajaControls
+              cajaAbierta={cajaAbierta}
+              currentPv={currentPv}
+              user={user}
+              onAbrirCaja={solicitarAbrirCaja}
+              onCerrarCaja={solicitarCerrarCaja}
+              onIngresarEfectivo={() => abrirModalMovimiento("ingreso")}
+              onRetirarEfectivo={() => abrirModalMovimiento("retiro")}
+            />
+          </div>
+
+          {/* Columna derecha: resumen de caja */}
+          <CajaResumen cajaId={cajaId} />
+        </div>
+
+        {/* Sección de movimientos a todo el ancho */}
+        <CajaMovimientos cajaId={cajaId} />
+      </div>
+
+      {/* Modal para ingresar / retirar efectivo */}
+      <MovimientoModal
+        show={showMovimientoModal}
+        tipo={movimientoTipo}
+        monto={monto}
+        descripcion={descripcion}
+        loading={movimientoLoading}
+        puntoDeVenta={currentPv}
+        onMontoChange={setMonto}
+        onDescripcionChange={setDescripcion}
+        onCancel={cerrarModalMovimiento}
+        onConfirm={handleConfirmarMovimiento}
+      />
+
+      {/* Modal de confirmación para abrir/cerrar caja */}
+      <ConfirmModal
+        show={showConfirmModal}
+        onClose={closeConfirmModal}
+        onOk={confirmarAccion}
+        state={confirmState}
+        confirmLoading={confirmLoading}
+        messages={getConfirmMessages()}
+      />
+    </section>
+  );
+}
