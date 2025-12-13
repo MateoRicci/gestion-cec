@@ -77,7 +77,7 @@ export default function SignUp() {
     try {
       // Llamada GET al endpoint de validación
       const response = await axios.get(
-        `/personas/tipo-documento/${data.tipoDocumento}/documento/${data.numeroDocumento}`
+        `/api/personas/tipo-documento/${data.tipoDocumento}/documento/${data.numeroDocumento}`
       );
 
       // Si la respuesta es exitosa, guardar el ID de la persona
@@ -129,7 +129,7 @@ export default function SignUp() {
 
     try {
       // Llamada POST al endpoint de registro
-      await axios.post("/auth/registrar", {
+      await axios.post("/api/auth/registrar", {
         personaId: step1Data?.personaId,
         usuario: data.usuario,
         email: data.email,

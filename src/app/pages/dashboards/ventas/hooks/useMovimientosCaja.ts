@@ -1,26 +1,18 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "@/utils/axios";
 
-export interface TipoMovimientoCaja {
-  id: number;
-  nombre: string;
-  descripcion: string;
-  createdAt: string;
-  updatedAt: string;
-  deletedAt: string | null;
-}
-
 export interface MovimientoCajaResponse {
   id: number;
-  monto: number;
-  tipoMovimientoCajaId: number;
-  descripcion: string;
-  cajaId: number;
-  usuarioId: string;
-  createdAt: string;
-  updatedAt: string;
-  deletedAt: string | null;
-  tipoMovimientoCaja: TipoMovimientoCaja;
+  caja_id: number;
+  tipo_movimiento_caja_id: number;
+  usuario_id: number;
+  monto: string; // Viene como string desde el backend
+  descripcion: string | null;
+  accion_movimiento_type: string | null;
+  accion_movimiento_id: number | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
 }
 
 export interface MovimientoCaja {
@@ -35,9 +27,6 @@ export interface MovimientoCaja {
   updatedAt: string;
 }
 
-// Map global de tipos de movimiento (id -> nombre)
-let tiposMovimientoMap: Map<number, string> = new Map();
-
 // Sistema de invalidación global para refrescar todos los hooks cuando hay un cambio
 const invalidationListeners: Map<number | null, Set<() => void>> = new Map();
 
@@ -48,21 +37,6 @@ export function invalidateMovimientosCaja(cajaId: number | null) {
   }
 }
 
-// Función para cargar los tipos de movimiento
-async function loadTiposMovimiento(): Promise<Map<number, string>> {
-  try {
-    const response = await axios.get<TipoMovimientoCaja[]>("/cajas/movimientos/tipos");
-    const map = new Map<number, string>();
-    response.data.forEach((tipo) => {
-      map.set(tipo.id, tipo.nombre);
-    });
-    tiposMovimientoMap = map;
-    return map;
-  } catch (error) {
-    console.error("Error al cargar tipos de movimiento:", error);
-    return tiposMovimientoMap;
-  }
-}
 
 interface UseMovimientosCajaReturn {
   movimientos: MovimientoCaja[];
@@ -81,11 +55,6 @@ export function useMovimientosCaja(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Cargar tipos de movimiento al montar el componente
-  useEffect(() => {
-    loadTiposMovimiento();
-  }, []);
-
   const fetchMovimientos = useCallback(async () => {
     if (!cajaId) {
       setMovimientos([]);
@@ -96,29 +65,24 @@ export function useMovimientosCaja(
     setError(null);
 
     try {
-      // Asegurar que los tipos estén cargados
-      const tiposMap = tiposMovimientoMap.size > 0 
-        ? tiposMovimientoMap 
-        : await loadTiposMovimiento();
-
       const response = await axios.get<MovimientoCajaResponse[]>(
-        `/cajas/movimientos/${cajaId}`
+        `/api/cajas/${cajaId}/movimientos`
       );
 
-      // Procesar movimientos: usar el monto tal cual viene del backend (ya tiene el signo correcto)
+      // Procesar movimientos: solo extraer el monto (convertir de string a number)
       const processedMovimientos: MovimientoCaja[] = response.data.map((m) => {
-        const tipoNombre = tiposMap.get(m.tipoMovimientoCajaId) || m.tipoMovimientoCaja.nombre;
+        const montoNum = parseFloat(m.monto); // Convertir de string a number
         
         return {
           id: m.id,
-          monto: m.monto, // Usar el monto directamente del backend (negativo para egresos, positivo para ingresos)
-          tipoMovimientoCajaId: m.tipoMovimientoCajaId,
-          tipoMovimientoNombre: tipoNombre,
-          descripcion: m.descripcion,
-          cajaId: m.cajaId,
-          usuarioId: m.usuarioId,
-          createdAt: m.createdAt,
-          updatedAt: m.updatedAt,
+          monto: montoNum, // Los egresos vienen negativos, los ingresos positivos
+          tipoMovimientoCajaId: m.tipo_movimiento_caja_id,
+          tipoMovimientoNombre: "", // Ya no se usa, pero mantenemos la estructura
+          descripcion: m.descripcion || "",
+          cajaId: m.caja_id,
+          usuarioId: m.usuario_id.toString(),
+          createdAt: m.created_at,
+          updatedAt: m.updated_at,
         };
       });
 

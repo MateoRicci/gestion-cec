@@ -18,7 +18,7 @@ export default defineConfig({
     proxy: {
       // Proxy para evitar CORS en desarrollo
       "/api": {
-        target: "https://r67lvtpb-3000.brs.devtunnels.ms",
+        target: "https://cec.ginformatico.com.ar",
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ""),
         secure: true,

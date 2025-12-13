@@ -48,7 +48,7 @@ export default function PuntosDeVentaConfig() {
     setListError(null);
 
     try {
-      const response = await axios.get<PuntoDeVentaResponse[]>("/puntos-venta");
+      const response = await axios.get<PuntoDeVentaResponse[]>("/api/puntos-venta");
       
       // Mapear la respuesta para guardar solo id, nombre y descripcion
       const puntosMapeados: PuntoDeVenta[] = response.data.map((pv) => ({
@@ -113,7 +113,7 @@ export default function PuntosDeVentaConfig() {
     }
 
     try {
-      await axios.delete(`/puntos-venta/${id}`);
+      await axios.delete(`/api/puntos-venta/${id}`);
       
       // Recargar la lista después de eliminar
       await loadPuntosDeVenta();
@@ -162,7 +162,7 @@ export default function PuntosDeVentaConfig() {
     try {
       if (editingId) {
         // Editar punto de venta existente
-        await axios.patch(`/puntos-venta/${editingId}`, {
+        await axios.patch(`/api/puntos-venta/${editingId}`, {
           nombre: formData.nombre,
           descripcion: formData.descripcion,
         });
@@ -175,7 +175,7 @@ export default function PuntosDeVentaConfig() {
         setEditingId(null);
       } else {
         // Crear nuevo punto de venta
-        await axios.post("/puntos-venta", {
+        await axios.post("/api/puntos-venta", {
           nombre: formData.nombre,
           descripcion: formData.descripcion,
         });

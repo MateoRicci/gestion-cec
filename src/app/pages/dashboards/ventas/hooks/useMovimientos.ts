@@ -59,16 +59,16 @@ export function useMovimientos(): UseMovimientosReturn {
 
     try {
       const endpoint =
-        movimientoTipo === "ingreso" ? "/cajas/ingreso" : "/cajas/egreso";
+        movimientoTipo === "ingreso" 
+          ? "/api/cajas/movimientos/ingreso-dinero" 
+          : "/api/cajas/movimientos/egreso-dinero";
 
       // Para egresos, el monto debe ser negativo
       const montoFinal = movimientoTipo === "ingreso" ? montoNum : -montoNum;
 
       await axios.post(endpoint, {
+        caja_id: cajaId,
         monto: montoFinal,
-        cajaId,
-        descripcion: descripcion || (movimientoTipo === "ingreso" ? "Ingreso de efectivo" : "Retiro de efectivo"),
-        usuarioId: user.id,
       });
 
       cerrarModalMovimiento();

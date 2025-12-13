@@ -21,7 +21,7 @@ interface UseCajaActionsReturn {
 export function useCajaActions(
   currentPv: PuntoDeVenta | undefined
 ): UseCajaActionsReturn {
-  const { setCajaAbierta, setCajaIdPorPuntoVenta, getCajaId } = useVentasContext();
+  const { setCajaAbierta, getCajaId, refreshCajaEstado } = useVentasContext();
   const { user } = useAuthContext();
 
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -44,18 +44,15 @@ export function useCajaActions(
 
     try {
       const fechaHoy = getFechaHoy();
-      const response = await axios.post<{ id: number }>("/cajas/abrir", {
-        nombre: `Caja de ${currentPv.nombre}`,
-        descripcion: fechaHoy,
-        puntoVentaId: currentPv.id,
-        usuarioId: user.id,
+      await axios.post<{ id: number }>("/api/cajas/abrir", {
+        nombre: `Caja ${currentPv.nombre}`,
+        descripcion: `Caja del dia ${fechaHoy}`,
+        punto_venta_id: currentPv.id,
       });
 
-      // Guardar el ID de la caja para este punto de venta
-      if (response.data?.id) {
-        setCajaIdPorPuntoVenta(currentPv.id.toString(), response.data.id);
-      }
-
+      // Refrescar el estado de la caja desde el servidor
+      await refreshCajaEstado();
+      
       setCajaAbierta(true);
       setConfirmState("success");
       // Guardar la acción actual antes de resetear
@@ -96,10 +93,11 @@ export function useCajaActions(
     setConfirmState("pending");
 
     try {
-      await axios.patch(`/cajas/cerrar/${cajaId}`);
+      await axios.patch(`/api/cajas/${cajaId}/cerrar`);
 
-      // Limpiar el ID de la caja para este punto de venta
-      setCajaIdPorPuntoVenta(currentPv.id.toString(), null);
+      // Refrescar el estado de la caja desde el servidor
+      await refreshCajaEstado();
+      
       setCajaAbierta(false);
       setConfirmState("success");
       // Guardar la acción actual antes de resetear

@@ -26,13 +26,13 @@ export interface Caja {
   id: number;
   nombre: string;
   descripcion: string;
-  puntoVentaId: number;
-  usuarioId: string;
-  fechaApertura: string;
-  fechaCierre: string | null;
-  createdAt: string;
-  updatedAt: string;
-  deletedAt: string | null;
+  punto_venta_id: number;
+  usuario_id: number;
+  fecha_apertura: string;
+  fecha_cierre: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
 }
 
 export interface VentasContextType {
@@ -44,6 +44,8 @@ export interface VentasContextType {
   setSelectedPuntoDeVentaId: (pvId: string) => void;
   cajaAbierta: boolean;
   setCajaAbierta: (open: boolean) => void;
+  isLoadingCaja: boolean;
+  refreshCajaEstado: () => Promise<void>;
   cajaIdPorPuntoVenta: Record<string, number>;
   setCajaIdPorPuntoVenta: (puntoVentaId: string, cajaId: number | null) => void;
   getCajaId: (puntoVentaId: string) => number | null;
@@ -59,6 +61,7 @@ export function VentasProvider({ children }: { children: ReactNode }) {
   const [isLoadingPuntosDeVenta, setIsLoadingPuntosDeVenta] = useState(true);
   const [selectedPuntoDeVentaId, setSelectedPuntoDeVentaId] = useState("");
   const [cajaAbierta, setCajaAbierta] = useState(false);
+  const [isLoadingCaja, setIsLoadingCaja] = useState(true);
   const [cajaIdPorPuntoVenta, setCajaIdPorPuntoVentaState] = useState<
     Record<string, number>
   >({});
@@ -77,12 +80,38 @@ export function VentasProvider({ children }: { children: ReactNode }) {
     return cajaIdPorPuntoVenta[puntoVentaId] || null;
   };
 
+  // Función para verificar el estado de la caja abierta
+  const verificarCajaAbierta = async () => {
+    setIsLoadingCaja(true);
+    
+    try {
+      // El endpoint devuelve {} si no hay caja abierta, o un objeto Caja si hay una abierta
+      const response = await axios.get<Caja | {}>("/api/cajas/abierta");
+      
+      // Verificar si la respuesta tiene datos de caja (no es un objeto vacío)
+      if (response.data && typeof response.data === 'object' && 'id' in response.data) {
+        const caja = response.data as Caja;
+        // Si hay una caja abierta, guardar su ID para el punto de venta correspondiente
+        setCajaIdPorPuntoVenta(caja.punto_venta_id.toString(), caja.id);
+      } else {
+        // No hay caja abierta, limpiar todos los IDs
+        setCajaIdPorPuntoVentaState({});
+      }
+    } catch (error) {
+      console.error("Error al verificar caja abierta:", error);
+      // En caso de error, asumir que no hay caja abierta
+      setCajaIdPorPuntoVentaState({});
+    } finally {
+      setIsLoadingCaja(false);
+    }
+  };
+
   // Cargar puntos de venta desde el API
   useEffect(() => {
     const fetchPuntosDeVenta = async () => {
       try {
         setIsLoadingPuntosDeVenta(true);
-        const response = await axios.get<PuntoDeVenta[]>("/puntos-venta");
+        const response = await axios.get<PuntoDeVenta[]>("/api/puntos-venta");
         
         if (response.data && Array.isArray(response.data)) {
           // Filtrar solo los puntos de venta activos (estado: true)
@@ -106,40 +135,10 @@ export function VentasProvider({ children }: { children: ReactNode }) {
     fetchPuntosDeVenta();
   }, []);
 
-  // Verificar estado de cajas abiertas para cada punto de venta
+  // Verificar estado de caja abierta al montar
   useEffect(() => {
-    const verificarCajasAbiertas = async () => {
-      if (puntosDeVenta.length === 0) return;
-
-      try {
-        // Verificar cajas para cada punto de venta
-        const verificaciones = puntosDeVenta.map(async (pv) => {
-          try {
-            const response = await axios.get<Caja[]>(`/cajas/punto-venta/${pv.id}`);
-            
-            if (response.data && Array.isArray(response.data) && response.data.length > 0) {
-              // Obtener la última caja (la más reciente)
-              const ultimaCaja = response.data[response.data.length - 1];
-              
-              // Si fechaCierre es null, hay una caja abierta
-              if (ultimaCaja.fechaCierre === null) {
-                setCajaIdPorPuntoVenta(pv.id.toString(), ultimaCaja.id);
-              }
-            }
-          } catch (error) {
-            console.error(`Error al verificar caja para punto de venta ${pv.id}:`, error);
-            // Continuar con los demás puntos de venta aunque uno falle
-          }
-        });
-
-        await Promise.all(verificaciones);
-      } catch (error) {
-        console.error("Error al verificar cajas abiertas:", error);
-      }
-    };
-
-    verificarCajasAbiertas();
-  }, [puntosDeVenta]);
+    verificarCajaAbierta();
+  }, []);
 
   // Actualizar estado de cajaAbierta cuando cambia el punto de venta seleccionado
   useEffect(() => {
@@ -169,6 +168,8 @@ export function VentasProvider({ children }: { children: ReactNode }) {
         setSelectedPuntoDeVentaId,
         cajaAbierta,
         setCajaAbierta,
+        isLoadingCaja,
+        refreshCajaEstado: verificarCajaAbierta,
         cajaIdPorPuntoVenta,
         setCajaIdPorPuntoVenta,
         getCajaId,

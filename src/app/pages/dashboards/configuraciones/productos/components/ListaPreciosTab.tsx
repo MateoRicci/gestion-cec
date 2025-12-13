@@ -52,7 +52,7 @@ export function ListaPreciosTab() {
     setListError(null);
 
     try {
-      const response = await axios.get<ListaPreciosResponse[]>("/lista-precios");
+      const response = await axios.get<ListaPreciosResponse[]>("/api/listas-precio");
       
       // Mapear la respuesta
       const listasMapeadas: ListaPrecios[] = response.data.map((lista) => ({
@@ -118,7 +118,7 @@ export function ListaPreciosTab() {
     }
 
     try {
-      await axios.delete(`/lista-precios/${id}`);
+      await axios.delete(`/api/listas-precio/${id}`);
       
       // Recargar la lista después de eliminar
       await loadListasPrecios();
@@ -174,10 +174,10 @@ export function ListaPreciosTab() {
 
       if (editingId) {
         // Actualizar lista de precios existente
-        await axios.patch(`/lista-precios/${editingId}`, payload);
+        await axios.patch(`/api/listas-precio/${editingId}`, payload);
       } else {
         // Crear nueva lista de precios
-        await axios.post("/lista-precios", payload);
+        await axios.post("/api/listas-precio", payload);
       }
 
       // Cerrar el modal y recargar la lista
@@ -400,6 +400,7 @@ export function ListaPreciosTab() {
     </div>
   );
 }
+
 
 
 

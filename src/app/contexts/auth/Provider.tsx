@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [isInitialized, user, isAuthenticated, setAuthenticated, setInitialized]);
 
-  const login = async (credentials: { usuario: string; password: string }) => {
+  const login = async (credentials: { username: string; password: string }) => {
     setLoading(true);
     setErrorMessage(null);
 
@@ -56,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // El login ahora maneja cookies automáticamente (access_token se guarda en cookie)
       // y devuelve los datos del usuario
       const response = await axios.post<{ user: any }>(
-        "/auth/login",
+        "/api/login",
         credentials,
       );
 
@@ -105,13 +105,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       // Llamar al endpoint de logout del backend para limpiar la cookie
-      await axios.post("/auth/logout");
+      await axios.post("/api/logout");
+      // console.log("Logout response:", response);
     } catch (err) {
       console.error("Error al hacer logout:", err);
       // Continuar con el logout local aunque falle el backend
     }
     
-    // Limpiar el store de Zustand (incluye localStorage)
+    // Limpiar localStorage completamente
+    localStorage.clear();
+    
+    // Limpiar el store de Zustand (esto también limpia su parte del localStorage)
     logoutStore();
     
     // Redirigir al login después de cerrar sesión

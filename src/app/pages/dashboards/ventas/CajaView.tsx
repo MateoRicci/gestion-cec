@@ -17,6 +17,7 @@ export function CajaView() {
     selectedPuntoDeVentaId,
     setSelectedPuntoDeVentaId,
     cajaAbierta,
+    isLoadingCaja,
     getCajaId,
   } = useVentasContext();
   const { user } = useAuthContext();
@@ -84,17 +85,26 @@ export function CajaView() {
               onPuntoDeVentaChange={setSelectedPuntoDeVentaId}
             />
 
-            <CajaEstado cajaAbierta={cajaAbierta} cajaId={cajaId} />
+            {isLoadingCaja ? (
+              <div className="mt-6 flex items-center gap-2 text-sm text-gray-500 dark:text-dark-200">
+                <div className="inline-block size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                <span>Cargando estado de la caja...</span>
+              </div>
+            ) : (
+              <>
+                <CajaEstado cajaAbierta={cajaAbierta} cajaId={cajaId} />
 
-            <CajaControls
-              cajaAbierta={cajaAbierta}
-              currentPv={currentPv}
-              user={user}
-              onAbrirCaja={solicitarAbrirCaja}
-              onCerrarCaja={solicitarCerrarCaja}
-              onIngresarEfectivo={() => abrirModalMovimiento("ingreso")}
-              onRetirarEfectivo={() => abrirModalMovimiento("retiro")}
-            />
+                <CajaControls
+                  cajaAbierta={cajaAbierta}
+                  currentPv={currentPv}
+                  user={user}
+                  onAbrirCaja={solicitarAbrirCaja}
+                  onCerrarCaja={solicitarCerrarCaja}
+                  onIngresarEfectivo={() => abrirModalMovimiento("ingreso")}
+                  onRetirarEfectivo={() => abrirModalMovimiento("retiro")}
+                />
+              </>
+            )}
           </div>
 
           {/* Columna derecha: resumen de caja */}

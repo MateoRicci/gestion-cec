@@ -5,37 +5,28 @@ import {
   Transition,
   TransitionChild,
 } from "@headlessui/react";
-import { XMarkIcon } from "@heroicons/react/24/outline";
+import { XMarkIcon, PlusIcon, MinusIcon } from "@heroicons/react/24/outline";
 import { Button, Input } from "@/components/ui";
 import { Spinner } from "@/components/ui/Spinner";
 import axios from "@/utils/axios";
 
 // ----------------------------------------------------------------------
 
-interface ProductoPrecioResponse {
-  id: number;
-  listaPrecioId: number;
-  productoId: number;
-  precio: number;
-  tipoMonedaId: number;
-  createdAt: string;
-  updatedAt: string;
-  deletedAt: string | null;
-  listaPrecio: {
-    id: number;
-    nombre: string;
-    descripcion: string;
-    createdAt: string;
-    updatedAt: string;
-    deletedAt: string | null;
-  };
+interface ProductoPrecioItem {
+  lista_precio_id: number;
+  nombre_lista: string;
+  precio_unitario: string;
+}
+
+interface ProductoPreciosResponse {
+  precios: ProductoPrecioItem[];
 }
 
 interface Producto {
   id: number;
   nombre: string;
   descripcion: string;
-  codigoProducto: number;
+  codigo_producto: string;
 }
 
 interface ProductoPreciosModalProps {
@@ -51,7 +42,7 @@ export function ProductoPreciosModal({
   onClose,
   onAgregar,
 }: ProductoPreciosModalProps) {
-  const [precioNoSocio, setPrecioNoSocio] = useState<ProductoPrecioResponse | null>(null);
+  const [precioNoSocio, setPrecioNoSocio] = useState<ProductoPrecioItem | null>(null);
   const [cantidad, setCantidad] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,13 +63,13 @@ export function ProductoPreciosModal({
     setError(null);
 
     try {
-      const response = await axios.get<ProductoPrecioResponse[]>(
-        `/productos/precios/producto/${producto.id}`
+      const response = await axios.get<ProductoPreciosResponse>(
+        `/api/productos/${producto.id}/precios`
       );
       
       // Buscar la lista de precios de "no socios" (case insensitive)
-      const precioNoSocioEncontrado = response.data.find((precio) =>
-        precio.listaPrecio.nombre.toLowerCase().includes("no socio")
+      const precioNoSocioEncontrado = response.data.precios.find((precio) =>
+        precio.nombre_lista.toLowerCase().includes("no socio")
       );
 
       if (!precioNoSocioEncontrado) {
@@ -101,6 +92,14 @@ export function ProductoPreciosModal({
     setCantidad(cantidadNum);
   };
 
+  const incrementarCantidad = () => {
+    setCantidad((prev) => prev + 1);
+  };
+
+  const decrementarCantidad = () => {
+    setCantidad((prev) => Math.max(0, prev - 1));
+  };
+
   const handleAgregar = () => {
     if (!precioNoSocio) {
       setError("No hay precio disponible para agregar");
@@ -113,10 +112,10 @@ export function ProductoPreciosModal({
     }
 
     onAgregar([{
-      listaPrecioId: precioNoSocio.listaPrecioId,
+      listaPrecioId: precioNoSocio.lista_precio_id,
       cantidad: cantidad,
-      precio: precioNoSocio.precio,
-      nombreLista: precioNoSocio.listaPrecio.nombre,
+      precio: parseFloat(precioNoSocio.precio_unitario),
+      nombreLista: precioNoSocio.nombre_lista,
     }]);
     onClose();
   };
@@ -189,58 +188,90 @@ export function ProductoPreciosModal({
                 <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-dark-600 dark:bg-dark-800">
                   <div className="mb-4">
                     <h4 className="text-sm font-medium text-gray-900 dark:text-dark-50">
-                      {precioNoSocio.listaPrecio.nombre}
+                      {precioNoSocio.nombre_lista}
                     </h4>
-                    {precioNoSocio.listaPrecio.descripcion && (
-                      <p className="mt-1 text-xs text-gray-500 dark:text-dark-400">
-                        {precioNoSocio.listaPrecio.descripcion}
-                      </p>
-                    )}
                     <p className="mt-3 text-2xl font-bold text-primary-600 dark:text-primary-400">
-                      ${precioNoSocio.precio.toFixed(2)}
+                      ${parseFloat(precioNoSocio.precio_unitario).toFixed(2)}
                     </p>
                   </div>
                   
                   {/* Campo de cantidad */}
-                  <div>
+                  <div className="min-h-[140px]">
                     <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-dark-200">
                       Cantidad
                     </label>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={cantidad || ""}
-                      onChange={(e) =>
-                        handleCantidadChange(parseInt(e.target.value) || 0)
-                      }
-                      placeholder="0"
-                      className="w-full text-center text-lg"
-                      autoFocus
-                    />
+                    <div className="flex items-center gap-3">
+                      {/* Input de cantidad - 3/4 del ancho */}
+                      <div className="w-3/4">
+                        <Input
+                          type="number"
+                          min="0"
+                          value={cantidad || ""}
+                          onChange={(e) =>
+                            handleCantidadChange(parseInt(e.target.value) || 0)
+                          }
+                          placeholder="0"
+                          className="w-full text-center text-lg font-semibold"
+                          autoFocus
+                        />
+                      </div>
+                      
+                      {/* Botones - 1/4 del ancho, apilados verticalmente */}
+                      <div className="flex w-1/4 flex-col gap-2">
+                        {/* Botón incrementar */}
+                        <button
+                          type="button"
+                          onClick={incrementarCantidad}
+                          className="flex h-12 w-full items-center justify-center rounded-lg border-2 border-primary-500 bg-primary-500 text-white transition-all hover:border-primary-600 hover:bg-primary-600 dark:border-primary-500 dark:bg-primary-500 dark:hover:border-primary-400 dark:hover:bg-primary-400"
+                        >
+                          <PlusIcon className="size-6" />
+                        </button>
+                        
+                        {/* Botón decrementar */}
+                        <button
+                          type="button"
+                          onClick={decrementarCantidad}
+                          disabled={cantidad <= 0}
+                          className="flex h-12 w-full items-center justify-center rounded-lg border-2 border-gray-300 bg-white text-gray-700 transition-all hover:border-primary-500 hover:bg-primary-50 hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-gray-300 disabled:hover:bg-white disabled:hover:text-gray-700 dark:border-dark-500 dark:bg-dark-800 dark:text-dark-200 dark:hover:border-primary-500 dark:hover:bg-primary-900/30 dark:disabled:hover:border-dark-500 dark:disabled:hover:bg-dark-800"
+                        >
+                          <MinusIcon className="size-6" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                {/* Resumen */}
-                {cantidad > 0 && (
-                  <div className="rounded-lg border border-primary-200 bg-primary-50 p-4 dark:border-primary-800 dark:bg-primary-900/20">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-700 dark:text-dark-200">
-                        Cantidad: <span className="font-semibold">{cantidad}</span>
-                      </span>
-                      <span className="text-gray-700 dark:text-dark-200">
-                        Precio unitario: <span className="font-semibold">${precioNoSocio.precio.toFixed(2)}</span>
-                      </span>
-                    </div>
-                    <div className="mt-4 flex items-center justify-between border-t border-primary-300 pt-3 dark:border-primary-700">
-                      <p className="text-sm font-semibold text-gray-700 dark:text-dark-200">
-                        Total:
-                      </p>
-                      <p className="text-lg font-bold text-primary-600 dark:text-primary-400">
-                        ${(precioNoSocio.precio * cantidad).toFixed(2)}
-                      </p>
-                    </div>
+                {/* Resumen - Siempre visible para mantener altura fija */}
+                <div className={`rounded-lg border p-4 transition-colors ${
+                  cantidad > 0 
+                    ? "border-primary-200 bg-primary-50 dark:border-primary-800 dark:bg-primary-900/20" 
+                    : "border-gray-200 bg-gray-50 dark:border-dark-600 dark:bg-dark-800"
+                }`}>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-700 dark:text-dark-200">
+                      Cantidad: <span className="font-semibold">{cantidad || 0}</span>
+                    </span>
+                    <span className="text-gray-700 dark:text-dark-200">
+                      Precio unitario: <span className="font-semibold">${parseFloat(precioNoSocio.precio_unitario).toFixed(2)}</span>
+                    </span>
                   </div>
-                )}
+                  <div className={`mt-4 flex items-center justify-between border-t pt-3 ${
+                    cantidad > 0 
+                      ? "border-primary-300 dark:border-primary-700" 
+                      : "border-gray-300 dark:border-dark-600"
+                  }`}>
+                    <p className="text-sm font-semibold text-gray-700 dark:text-dark-200">
+                      Total:
+                    </p>
+                    <p className={`text-lg font-bold ${
+                      cantidad > 0 
+                        ? "text-primary-600 dark:text-primary-400" 
+                        : "text-gray-500 dark:text-dark-400"
+                    }`}>
+                      ${(parseFloat(precioNoSocio.precio_unitario) * (cantidad || 0)).toFixed(2)}
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
           </div>

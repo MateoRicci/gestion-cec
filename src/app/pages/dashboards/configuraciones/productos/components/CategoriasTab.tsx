@@ -52,7 +52,7 @@ export function CategoriasTab() {
     setListError(null);
 
     try {
-      const response = await axios.get<CategoriaResponse[]>("/categorias-producto");
+      const response = await axios.get<CategoriaResponse[]>("/api/productos/categorias");
       
       // Mapear la respuesta
       const categoriasMapeadas: Categoria[] = response.data.map((cat) => ({
@@ -118,7 +118,7 @@ export function CategoriasTab() {
     }
 
     try {
-      await axios.delete(`/categorias-producto/${id}`);
+      await axios.delete(`/api/productos/categorias/${id}`);
       
       // Recargar la lista después de eliminar
       await loadCategorias();
@@ -167,7 +167,7 @@ export function CategoriasTab() {
     try {
       if (editingId) {
         // Editar categoría existente
-        await axios.patch(`/categorias-producto/${editingId}`, {
+        await axios.patch(`/api/productos/categorias/${editingId}`, {
           nombre: formData.nombre,
           descripcion: formData.descripcion,
         });
@@ -180,7 +180,7 @@ export function CategoriasTab() {
         setEditingId(null);
       } else {
         // Crear nueva categoría
-        await axios.post("/categorias-producto", {
+        await axios.post("/api/productos/categorias", {
           nombre: formData.nombre,
           descripcion: formData.descripcion,
         });

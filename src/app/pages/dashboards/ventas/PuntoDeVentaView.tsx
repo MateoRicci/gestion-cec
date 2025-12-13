@@ -24,37 +24,38 @@ interface Producto {
   id: number;
   nombre: string;
   descripcion: string;
-  codigoProducto: number;
+  codigo_producto: string;
   precio?: number;
-  controlaStock?: boolean;
+  controla_stock?: boolean;
   categorias?: Array<{ id: number; nombre: string }>;
-  puntosVenta?: Array<{ id: number; nombre: string }>;
+  puntos_venta?: Array<{ id: number; nombre: string }>;
 }
 
 interface ProductoResponse {
   id: number;
   nombre: string;
   descripcion: string;
-  codigoProducto: number | string;
+  codigo_producto: string;
   precio?: number;
-  controlaStock?: boolean;
+  controla_stock?: boolean;
   categoria?: Array<{ id: number; nombre: string; descripcion?: string; categoriaPadreId?: number | null; createdAt?: string; updatedAt?: string; deletedAt?: string | null }>;
   categorias?: Array<{ id: number; nombre: string }>;
-  puntosVenta?: Array<{ id: number; nombre: string }>;
+  puntos_venta?: Array<{ id: number; nombre: string }>;
 }
 
 interface Familiar {
-  id_familiar: number;
-  id_cliente_familiar: number;
+  id_familiar: string; // id_afiliado del familiar
+  id_cliente_familiar: string; // cliente UUID del familiar
   nombre_familiar: string;
   apellido_familiar: string;
   dni_familiar: string;
   relacion: string;
+  edad_categoria: "mayor" | "menor";
 }
 
 interface Titular {
-  id_titular: number;
-  id_cliente_titular: number;
+  id_titular: string; // id_afiliado del titular
+  id_cliente_titular: string; // cliente UUID del titular
   nombre_titular: string;
   apellido_titular: string;
   dni_titular: string;
@@ -66,6 +67,38 @@ interface ClienteData {
   familiares?: Familiar[];
 }
 
+// Interfaces para la respuesta del backend
+interface AfiliadoResponse {
+  id_afiliado: string;
+  numero_afiliado: string;
+  activo: boolean;
+  fecha_alta: string;
+  fecha_baja: string | null;
+  fecha_ultimo_aporte: string | null;
+  cliente: string;
+  convenio: {
+    id: number;
+    nombre: string;
+  };
+  titular: {
+    nombre: string;
+    apellido: string;
+    numero_documento: number;
+  };
+  familiares: Array<{
+    id_afiliado: string;
+    tipo_familiar_id: number;
+    vencimiento_cargo: string | null;
+    persona: {
+      nombre: string;
+      apellido: string;
+      numero_documento: number;
+      edad_categoria: string;
+    };
+    parentesco: string;
+  }>;
+}
+
 interface DetalleItem {
   id: string; // ID único para el item
   productoId: number;
@@ -75,6 +108,19 @@ interface DetalleItem {
   cantidad: number;
   precio: number;
   subtotal: number;
+  // Campos adicionales para entradas de socio
+  afiliadoId?: string | null; // id_afiliado si es entrada de socio, null si es extra
+  esTitular?: boolean; // true solo si es el titular
+  dniPersona?: string; // DNI de la persona para identificar entradas de socio
+}
+
+interface MedioPago {
+  id: number;
+  nombre: string;
+  descripcion: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
 }
 
 // ----------------------------------------------------------------------
@@ -85,7 +131,9 @@ export function PuntoDeVentaView() {
     selectedPuntoDeVentaId,
     setSelectedPuntoDeVentaId,
     cajaAbierta,
+    isLoadingCaja,
     getCajaId,
+    refreshCajaEstado,
   } = useVentasContext();
   const { user } = useAuthContext();
   const [showPvDropdown, setShowPvDropdown] = useState(false);
@@ -105,15 +153,32 @@ export function PuntoDeVentaView() {
   // Estado del formulario de cliente
   const [dni, setDni] = useState("");
   const [clienteData, setClienteData] = useState<ClienteData | null>(null);
+  const [clienteId, setClienteId] = useState<string | null>(null); // UUID del cliente del titular
   const [isLoadingCliente, setIsLoadingCliente] = useState(false);
+  const [isConsumidorFinal, setIsConsumidorFinal] = useState(false);
   const [familiaresSeleccionados, setFamiliaresSeleccionados] = useState<Set<string>>(new Set());
   
   // Estado para precio de entrada "no socio"
   const [precioEntradaNoSocio, setPrecioEntradaNoSocio] = useState<number | null>(null);
   const [productoEntradaId, setProductoEntradaId] = useState<number | null>(null);
   
-  // Estado para método de pago seleccionado
-  const [metodoPago, setMetodoPago] = useState<"efectivo" | "tarjeta">("efectivo");
+  // Estado para productos y precios de entrada mayor y menor
+  const [productoEntradaMayorId, setProductoEntradaMayorId] = useState<number | null>(null);
+  const [productoEntradaMenorId, setProductoEntradaMenorId] = useState<number | null>(null);
+  const [precioEntradaMayor, setPrecioEntradaMayor] = useState<number | null>(null);
+  const [precioEntradaMenor, setPrecioEntradaMenor] = useState<number | null>(null);
+  const [listaPrecioIdSocio, setListaPrecioIdSocio] = useState<number>(1); // Por defecto id 1, cambia a 2 si es empleado
+  
+  // Estado para métodos de pago
+  const [mediosPago, setMediosPago] = useState<MedioPago[]>([]);
+  const [isLoadingMediosPago, setIsLoadingMediosPago] = useState(true);
+  const [metodoPagoId, setMetodoPagoId] = useState<number | null>(null);
+  
+  // Estados para modales de venta
+  const [showVentaExitoModal, setShowVentaExitoModal] = useState(false);
+  const [showVentaErrorModal, setShowVentaErrorModal] = useState(false);
+  const [ventaErrorMessage, setVentaErrorMessage] = useState("");
+  const [isProcesandoVenta, setIsProcesandoVenta] = useState(false);
 
   const currentPv =
     puntosDeVenta.find((pv) => pv.id.toString() === selectedPuntoDeVentaId) ||
@@ -148,17 +213,17 @@ export function PuntoDeVentaView() {
   // Función para cargar el precio de entrada "no socio"
   const loadPrecioEntradaNoSocio = async (productoId: number) => {
     try {
-      const response = await axios.get<any[]>(
-        `/productos/precios/producto/${productoId}`
+      const response = await axios.get<{ precios: Array<{ lista_precio_id: number; nombre_lista: string; precio_unitario: string }> }>(
+        `/api/productos/${productoId}/precios`
       );
       
       // Buscar la lista de precios de "no socio" (case insensitive)
-      const precioNoSocio = response.data.find((precio) =>
-        precio.listaPrecio.nombre.toLowerCase().includes("no socio")
+      const precioNoSocio = response.data.precios.find((precio) =>
+        precio.nombre_lista.toLowerCase().includes("no socio")
       );
 
       if (precioNoSocio) {
-        setPrecioEntradaNoSocio(precioNoSocio.precio);
+        setPrecioEntradaNoSocio(parseFloat(precioNoSocio.precio_unitario));
       } else {
         console.warn("No se encontró precio de 'no socio' para el producto de entrada");
         setPrecioEntradaNoSocio(null);
@@ -166,6 +231,49 @@ export function PuntoDeVentaView() {
     } catch (error) {
       console.error("Error al cargar precio de entrada no socio:", error);
       setPrecioEntradaNoSocio(null);
+    }
+  };
+
+  // Función para cargar el precio de entrada socio (mayor o menor) según el convenio
+  const loadPrecioEntradaSocio = async (productoId: number, tipo: "mayor" | "menor", convenioNombre: string) => {
+    try {
+      const response = await axios.get<{ precios: Array<{ lista_precio_id: number; nombre_lista: string; precio_unitario: string }> }>(
+        `/api/productos/${productoId}/precios`
+      );
+      
+      // Determinar qué lista de precios usar según el convenio
+      // Si el convenio es "empleado", usar lista_precio_id = 2
+      // Para todos los demás, usar lista_precio_id = 1
+      const listaPrecioIdBuscada = convenioNombre.toLowerCase().includes("empleado") ? 2 : 1;
+      
+      // Buscar el precio con el lista_precio_id correspondiente
+      const precioSocio = response.data.precios.find((precio) =>
+        precio.lista_precio_id === listaPrecioIdBuscada
+      );
+
+      if (precioSocio) {
+        if (tipo === "mayor") {
+          setPrecioEntradaMayor(parseFloat(precioSocio.precio_unitario));
+        } else {
+          setPrecioEntradaMenor(parseFloat(precioSocio.precio_unitario));
+        }
+        // Guardar el lista_precio_id usado
+        setListaPrecioIdSocio(listaPrecioIdBuscada);
+      } else {
+        console.warn(`No se encontró precio con lista_precio_id ${listaPrecioIdBuscada} para el producto de entrada ${tipo}`);
+        if (tipo === "mayor") {
+          setPrecioEntradaMayor(null);
+        } else {
+          setPrecioEntradaMenor(null);
+        }
+      }
+    } catch (error) {
+      console.error(`Error al cargar precio de entrada socio ${tipo}:`, error);
+      if (tipo === "mayor") {
+        setPrecioEntradaMayor(null);
+      } else {
+        setPrecioEntradaMenor(null);
+      }
     }
   };
 
@@ -181,7 +289,7 @@ export function PuntoDeVentaView() {
         const puntosVentaParam = [currentPv.id];
         
         // Usar paramsSerializer para asegurar formato puntosVenta[]=id
-        const response = await axios.get<ProductoResponse[]>("/productos", {
+        const response = await axios.get<ProductoResponse[]>("/api/productos", {
           params: {
             puntosVenta: puntosVentaParam,
           },
@@ -216,26 +324,46 @@ export function PuntoDeVentaView() {
             id: prod.id,
             nombre: prod.nombre,
             descripcion: prod.descripcion || "",
-            codigoProducto: typeof prod.codigoProducto === 'string' ? parseInt(prod.codigoProducto) : prod.codigoProducto,
+            codigo_producto: typeof prod.codigo_producto === 'string' ? prod.codigo_producto : String(prod.codigo_producto),
             precio: prod.precio,
-            controlaStock: prod.controlaStock || false,
+            controla_stock: prod.controla_stock || false,
             categorias: categoriasMapeadas,
-            puntosVenta: prod.puntosVenta || [],
+            puntos_venta: prod.puntos_venta || [],
           };
         });
         
         console.log("Productos mapeados:", productosMapeados);
         setProductos(productosMapeados);
         
-        // Buscar el producto "Entrada" o "Entradas" para obtener su precio de "no socio"
+        // Buscar productos de entrada
         const productoEntrada = productosMapeados.find(
-          (prod) => prod.nombre.toLowerCase().includes("entrada")
+          (prod) => prod.nombre.toLowerCase().includes("entrada") && 
+                    !prod.nombre.toLowerCase().includes("mayor") && 
+                    !prod.nombre.toLowerCase().includes("menor")
+        );
+        
+        const productoEntradaMayor = productosMapeados.find(
+          (prod) => prod.nombre.toLowerCase().includes("entrada") && 
+                    prod.nombre.toLowerCase().includes("mayor")
+        );
+        
+        const productoEntradaMenor = productosMapeados.find(
+          (prod) => prod.nombre.toLowerCase().includes("entrada") && 
+                    prod.nombre.toLowerCase().includes("menor")
         );
         
         if (productoEntrada) {
           setProductoEntradaId(productoEntrada.id);
-          // Cargar precios del producto entrada
+          // Cargar precios del producto entrada (para no socio)
           loadPrecioEntradaNoSocio(productoEntrada.id);
+        }
+        
+        if (productoEntradaMayor) {
+          setProductoEntradaMayorId(productoEntradaMayor.id);
+        }
+        
+        if (productoEntradaMenor) {
+          setProductoEntradaMenorId(productoEntradaMenor.id);
         }
       } catch (error: any) {
         console.error("Error al cargar productos:", error);
@@ -254,6 +382,29 @@ export function PuntoDeVentaView() {
     loadProductos();
   }, [currentPv]);
 
+  // Cargar medios de pago
+  useEffect(() => {
+    const loadMediosPago = async () => {
+      setIsLoadingMediosPago(true);
+      try {
+        const response = await axios.get<MedioPago[]>("/api/medios-pago");
+        
+        if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+          setMediosPago(response.data);
+          // Seleccionar el primer medio de pago por defecto
+          setMetodoPagoId(response.data[0].id);
+        }
+      } catch (error) {
+        console.error("Error al cargar medios de pago:", error);
+        setMediosPago([]);
+      } finally {
+        setIsLoadingMediosPago(false);
+      }
+    };
+
+    loadMediosPago();
+  }, []);
+
   const handleConfirmarMovimiento = async () => {
     if (!cajaId) {
       console.error("No hay caja abierta");
@@ -270,104 +421,108 @@ export function PuntoDeVentaView() {
     }
   };
 
-  // Función para cargar datos del cliente por DNI (mock)
+  // Función para cargar datos del cliente por DNI
   const loadClienteByDni = async (dniValue: string) => {
     if (!dniValue || dniValue.length < 3) {
       setClienteData(null);
+      setClienteId(null);
+      setIsConsumidorFinal(false);
       setFamiliaresSeleccionados(new Set());
+      // Limpiar precios de socio cuando se limpia la búsqueda
+      setPrecioEntradaMayor(null);
+      setPrecioEntradaMenor(null);
+      setListaPrecioIdSocio(1);
       return;
     }
 
     setIsLoadingCliente(true);
     try {
-      // Simular delay de red
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const dniBuscado = dniValue.trim();
+      const response = await axios.get<AfiliadoResponse>(
+        `/api/afiliados/buscar-por-documento/${dniBuscado}`
+      );
 
-      // Datos mock
-      const afiliadoData: ClienteData = {
-        titular: {
-          id_titular: 1,
-          id_cliente_titular: 101,
-          nombre_titular: "Santiago Nicolas",
-          apellido_titular: "Ricci",
-          dni_titular: "28008101",
-          convenio: "Afiliado CEC",
-        },
-        familiares: [
-          {
-            id_familiar: 2,
-            id_cliente_familiar: 102,
-            nombre_familiar: "Natalia",
-            apellido_familiar: "Villarruel",
-            dni_familiar: "27007101",
-            relacion: "Esposa",
-          },
-          {
-            id_familiar: 3,
-            id_cliente_familiar: 103,
-            nombre_familiar: "Mateo",
-            apellido_familiar: "Ricci Villarruel",
-            dni_familiar: "44975617",
-            relacion: "Hijo",
-          },
-        ],
-      };
+      const afiliado = response.data;
 
-      const consumidorFinalData: ClienteData = {
-        titular: {
-          id_titular: 5,
-          id_cliente_titular: 105,
-          nombre_titular: "Serra",
-          apellido_titular: "Franco",
-          dni_titular: "36606100",
-          convenio: "Consumidor Final",
-        },
-      };
-
-      // Determinar qué datos devolver según el DNI buscado
-      let dataToReturn: ClienteData | null = null;
-      let dniBuscado = dniValue.trim();
-
-      // Si el DNI es del titular afiliado o de algún familiar, devolver datos del afiliado
-      if (
-        dniBuscado === "28008101" ||
-        dniBuscado === "27007101" ||
-        dniBuscado === "44975617"
-      ) {
-        dataToReturn = afiliadoData;
-      } else if (dniBuscado === "36606100") {
-        dataToReturn = consumidorFinalData;
-      }
-
-      if (dataToReturn) {
-        setClienteData(dataToReturn);
-        
-        // Marcar el DNI buscado por defecto
-        const seleccionados = new Set<string>();
-        if (dataToReturn.familiares) {
-          // Si es el titular, marcarlo
-          if (dniBuscado === dataToReturn.titular.dni_titular) {
-            seleccionados.add(`titular-${dataToReturn.titular.dni_titular}`);
-          }
-          // Si es un familiar, marcarlo
-          dataToReturn.familiares.forEach((familiar) => {
-            if (dniBuscado === familiar.dni_familiar) {
-              seleccionados.add(`familiar-${familiar.dni_familiar}`);
-            }
-          });
-        } else {
-          // Si no hay familiares, marcar el titular
-          seleccionados.add(`titular-${dataToReturn.titular.dni_titular}`);
-        }
-        setFamiliaresSeleccionados(seleccionados);
-      } else {
+      // Si es Consumidor Final (id_afiliado === "CF")
+      if (afiliado.id_afiliado === "CF") {
         setClienteData(null);
+        setClienteId(afiliado.cliente); // Guardar el cliente UUID
+        setIsConsumidorFinal(true);
         setFamiliaresSeleccionados(new Set());
+        // No cargar precios de socio para consumidor final (se cargan manualmente como no socio)
+        setPrecioEntradaMayor(null);
+        setPrecioEntradaMenor(null);
+        setListaPrecioIdSocio(1);
+        return;
       }
-    } catch (error) {
+
+      // Si no es CF, procesar como afiliado normal
+      setIsConsumidorFinal(false);
+      setClienteId(afiliado.cliente); // Guardar el cliente UUID del titular
+
+      // Mapear la respuesta del backend a la estructura esperada
+      const clienteData: ClienteData = {
+        titular: {
+          id_titular: afiliado.id_afiliado,
+          id_cliente_titular: afiliado.cliente,
+          nombre_titular: afiliado.titular.nombre || "",
+          apellido_titular: afiliado.titular.apellido || "",
+          dni_titular: afiliado.titular.numero_documento?.toString() || "",
+          convenio: afiliado.convenio?.nombre || "",
+        },
+        familiares: afiliado.familiares?.map((familiar) => ({
+          id_familiar: familiar.id_afiliado,
+          id_cliente_familiar: "", // No viene en la respuesta, pero mantenemos la estructura
+          nombre_familiar: familiar.persona.nombre,
+          apellido_familiar: familiar.persona.apellido,
+          dni_familiar: familiar.persona.numero_documento.toString(),
+          relacion: familiar.parentesco,
+          edad_categoria: familiar.persona.edad_categoria === "menor" ? "menor" : "mayor",
+        })),
+      };
+
+      setClienteData(clienteData);
+
+      // Cargar precios de entrada según el convenio
+      const convenioNombre = clienteData.titular.convenio || "";
+      if (productoEntradaMayorId) {
+        loadPrecioEntradaSocio(productoEntradaMayorId, "mayor", convenioNombre);
+      }
+      if (productoEntradaMenorId) {
+        loadPrecioEntradaSocio(productoEntradaMenorId, "menor", convenioNombre);
+      }
+
+      // Marcar el DNI buscado por defecto
+      const seleccionados = new Set<string>();
+      // Si es el titular, marcarlo
+      if (dniBuscado === clienteData.titular.dni_titular) {
+        seleccionados.add(`titular-${clienteData.titular.dni_titular}`);
+      }
+      // Si es un familiar, marcarlo
+      if (clienteData.familiares) {
+        clienteData.familiares.forEach((familiar) => {
+          if (dniBuscado === familiar.dni_familiar) {
+            seleccionados.add(`familiar-${familiar.dni_familiar}`);
+          }
+        });
+      }
+      // Si no se encontró el DNI buscado en titular ni familiares, marcar el titular por defecto
+      if (seleccionados.size === 0) {
+        seleccionados.add(`titular-${clienteData.titular.dni_titular}`);
+      }
+      setFamiliaresSeleccionados(seleccionados);
+    } catch (error: any) {
       console.error("Error al cargar datos del cliente:", error);
+      // Si no se encuentra el afiliado, limpiar los datos
       setClienteData(null);
+      setClienteId(null);
+      setIsConsumidorFinal(false);
       setFamiliaresSeleccionados(new Set());
+      // Limpiar precios de socio cuando hay error
+      setPrecioEntradaMayor(null);
+      setPrecioEntradaMenor(null);
+      setListaPrecioIdSocio(1);
     } finally {
       setIsLoadingCliente(false);
     }
@@ -382,19 +537,25 @@ export function PuntoDeVentaView() {
       return;
     }
 
-    // Obtener todas las personas seleccionadas
-    const personasSeleccionadas: Array<{ dni: string; nombre: string; tipo: "titular" | "familiar" }> = [];
+    // Obtener todas las personas seleccionadas con su categoría de edad
+    const personasSeleccionadas: Array<{ 
+      dni: string; 
+      nombre: string; 
+      tipo: "titular" | "familiar";
+      edad_categoria: "mayor" | "menor";
+    }> = [];
 
-    // Agregar titular si está seleccionado
+    // Agregar titular si está seleccionado (siempre es mayor)
     if (familiaresSeleccionados.has(`titular-${clienteData.titular.dni_titular}`)) {
       personasSeleccionadas.push({
         dni: clienteData.titular.dni_titular,
         nombre: `${clienteData.titular.nombre_titular} ${clienteData.titular.apellido_titular}`,
         tipo: "titular",
+        edad_categoria: "mayor", // El titular siempre es mayor
       });
     }
 
-    // Agregar familiares seleccionados
+    // Agregar familiares seleccionados con su categoría de edad
     if (clienteData.familiares) {
       clienteData.familiares.forEach((familiar) => {
         if (familiaresSeleccionados.has(`familiar-${familiar.dni_familiar}`)) {
@@ -402,6 +563,7 @@ export function PuntoDeVentaView() {
             dni: familiar.dni_familiar,
             nombre: `${familiar.nombre_familiar} ${familiar.apellido_familiar}`,
             tipo: "familiar",
+            edad_categoria: familiar.edad_categoria,
           });
         }
       });
@@ -409,9 +571,6 @@ export function PuntoDeVentaView() {
 
     // Determinar el precio según el tipo de convenio
     const esConsumidorFinal = clienteData.titular.convenio === "Consumidor Final";
-    const precioEntrada = esConsumidorFinal && precioEntradaNoSocio !== null 
-      ? precioEntradaNoSocio 
-      : 0;
 
     // Actualizar el detalle: mantener productos normales y actualizar entradas de socio
     setDetalleItems((prev) => {
@@ -419,20 +578,68 @@ export function PuntoDeVentaView() {
       const itemsSinEntradasSocio = prev.filter((item) => !item.id.startsWith("entrada-socio-"));
 
       // Crear nuevas entradas de socio para las personas seleccionadas
-      const nuevasEntradasSocio: DetalleItem[] = personasSeleccionadas.map((persona) => ({
-        id: `entrada-socio-${persona.dni}`,
-        productoId: productoEntradaId || 0,
-        productoNombre: `Entrada Socio ${persona.nombre}`,
-        listaPrecioId: 0,
-        nombreLista: esConsumidorFinal ? "Entrada No Socio" : "Entrada Socio",
-        cantidad: 1,
-        precio: precioEntrada,
-        subtotal: precioEntrada,
-      }));
+      const nuevasEntradasSocio: DetalleItem[] = personasSeleccionadas.map((persona) => {
+        let productoId: number;
+        let precio: number;
+        let nombreLista: string;
+        let productoNombre: string;
+        let afiliadoId: string | null = null;
+        let esTitular = false;
+
+        if (esConsumidorFinal) {
+          // Para consumidor final, usar el producto de entrada general
+          productoId = productoEntradaId || 0;
+          precio = precioEntradaNoSocio || 0;
+          nombreLista = "Entrada No Socio";
+          productoNombre = `Entrada No Socio ${persona.nombre}`;
+          // Consumidor final: afiliado_id = null
+          afiliadoId = null;
+        } else {
+          // Para socios, usar el producto según la edad
+          if (persona.edad_categoria === "mayor") {
+            productoId = productoEntradaMayorId || 0;
+            precio = precioEntradaMayor || 0;
+            nombreLista = "Entrada Socio Mayor";
+            productoNombre = `Entrada Socio Mayor ${persona.nombre}`;
+          } else {
+            productoId = productoEntradaMenorId || 0;
+            precio = precioEntradaMenor || 0;
+            nombreLista = "Entrada Socio Menor";
+            productoNombre = `Entrada Socio Menor ${persona.nombre}`;
+          }
+          
+          // Obtener el id_afiliado según el tipo de persona
+          if (persona.tipo === "titular") {
+            afiliadoId = clienteData.titular.id_titular;
+            esTitular = true;
+          } else {
+            // Buscar el familiar por DNI para obtener su id_afiliado
+            const familiar = clienteData.familiares?.find((f) => f.dni_familiar === persona.dni);
+            if (familiar) {
+              afiliadoId = familiar.id_familiar;
+            }
+            esTitular = false;
+          }
+        }
+
+        return {
+          id: `entrada-socio-${persona.dni}`,
+          productoId,
+          productoNombre,
+          listaPrecioId: listaPrecioIdSocio, // Usar el lista_precio_id según el convenio (1 o 2)
+          nombreLista,
+          cantidad: 1,
+          precio,
+          subtotal: precio,
+          afiliadoId,
+          esTitular,
+          dniPersona: persona.dni,
+        };
+      });
 
       return [...itemsSinEntradasSocio, ...nuevasEntradasSocio];
     });
-  }, [familiaresSeleccionados, clienteData, precioEntradaNoSocio, productoEntradaId]);
+  }, [familiaresSeleccionados, clienteData, precioEntradaNoSocio, productoEntradaId, precioEntradaMayor, precioEntradaMenor, productoEntradaMayorId, productoEntradaMenorId, listaPrecioIdSocio]);
 
   // Cerrar dropdown al hacer clic fuera
   useEffect(() => {
@@ -456,21 +663,136 @@ export function PuntoDeVentaView() {
 
   // Función para manejar el click en "Cobrar"
   const handleCobrar = async () => {
-    if (!clienteData || !currentPv || detalleItems.length === 0) {
+    if (!currentPv || !clienteId || detalleItems.length === 0 || !metodoPagoId) {
       return;
     }
 
-    // Generar número de recibo único (timestamp)
-    const numeroRecibo = `REC-${Date.now()}`;
+    setIsProcesandoVenta(true);
+    
+    try {
+      // Separar items en entradas de socio y entradas extra
+      // Si es consumidor final, todas las entradas se tratan como extra (afiliado_id = null)
+      const entradasSocio = isConsumidorFinal 
+        ? [] 
+        : detalleItems.filter((item) => item.id.startsWith("entrada-socio-") && item.afiliadoId !== null);
+      const entradasExtra = detalleItems.filter((item) => 
+        !item.id.startsWith("entrada-socio-") || isConsumidorFinal || item.afiliadoId === null
+      );
 
-    // Generar el recibo PDF
-    await generateRecibo({
-      cliente: clienteData,
-      detalleItems,
-      puntoDeVenta: currentPv,
-      metodoPago,
-      numeroRecibo,
-    });
+      // Construir detalles para entradas de socio (una por persona)
+      const detallesSocio = entradasSocio.map((item) => ({
+        producto_id: item.productoId,
+        cantidad: item.cantidad,
+        precio_unitario: item.precio,
+        precio_total: item.subtotal,
+        lista_precio_id: item.listaPrecioId || 0,
+        afiliado_id: item.afiliadoId || null,
+        es_titular: item.esTitular || false,
+      }));
+
+      // Construir detalles para entradas extra (agrupar por producto)
+      const detallesExtraMap = new Map<number, {
+        producto_id: number;
+        cantidad: number;
+        precio_unitario: number;
+        precio_total: number;
+        lista_precio_id: number;
+      }>();
+
+      entradasExtra.forEach((item) => {
+        const existing = detallesExtraMap.get(item.productoId);
+        if (existing) {
+          // Agrupar por producto: sumar cantidad y precio_total
+          existing.cantidad += item.cantidad;
+          existing.precio_total += item.subtotal;
+        } else {
+          detallesExtraMap.set(item.productoId, {
+            producto_id: item.productoId,
+            cantidad: item.cantidad,
+            precio_unitario: item.precio,
+            precio_total: item.subtotal,
+            lista_precio_id: item.listaPrecioId || 0,
+          });
+        }
+      });
+
+      const detallesExtra = Array.from(detallesExtraMap.values()).map((detalle) => ({
+        ...detalle,
+        afiliado_id: null,
+        es_titular: false,
+      }));
+
+      // Combinar todos los detalles
+      const detalles = [...detallesSocio, ...detallesExtra];
+
+      // Construir el payload para la venta
+      const ventaPayload = {
+        cliente_id: clienteId,
+        punto_venta_id: currentPv.id,
+        medio_pago_id: metodoPagoId,
+        detalles,
+      };
+
+      // Log del payload antes de enviar
+      console.log("Payload de venta a enviar:", JSON.stringify(ventaPayload, null, 2));
+
+      // Enviar la venta al backend
+      const response = await axios.post("/api/ventas", ventaPayload);
+      
+      // Log de la respuesta
+      console.log("Respuesta del servidor:", response.data);
+
+      // Generar número de recibo único (timestamp)
+      const numeroRecibo = `REC-${Date.now()}`;
+
+      // Obtener el nombre del método de pago seleccionado
+      const medioPagoSeleccionado = mediosPago.find((mp) => mp.id === metodoPagoId);
+      const metodoPagoNombre = medioPagoSeleccionado?.nombre || "Efectivo";
+
+      // Generar el recibo PDF
+      await generateRecibo({
+        cliente: clienteData || { titular: { id_titular: "", id_cliente_titular: clienteId, nombre_titular: "", apellido_titular: "", dni_titular: dni, convenio: "No Socio" } },
+        detalleItems,
+        puntoDeVenta: currentPv,
+        metodoPago: metodoPagoNombre,
+        numeroRecibo,
+      });
+
+      // Recargar el estado de la caja para ver el impacto
+      await refreshCajaEstado();
+
+      // Mostrar modal de éxito
+      setShowVentaExitoModal(true);
+    } catch (error: any) {
+      console.error("Error al procesar la venta:", error);
+      // Mostrar modal de error (no generar PDF ni limpiar datos)
+      setVentaErrorMessage(
+        error?.response?.data?.message || 
+        error?.message || 
+        "Error al procesar la venta. Por favor, intenta nuevamente."
+      );
+      setShowVentaErrorModal(true);
+    } finally {
+      setIsProcesandoVenta(false);
+    }
+  };
+
+  // Función para cerrar modal de éxito y limpiar datos
+  const handleCerrarModalExito = () => {
+    setShowVentaExitoModal(false);
+    // Limpiar el formulario después de cobrar exitosamente
+    setDni("");
+    setClienteData(null);
+    setClienteId(null);
+    setIsConsumidorFinal(false);
+    setFamiliaresSeleccionados(new Set());
+    setDetalleItems([]);
+  };
+
+  // Función para cerrar modal de error
+  const handleCerrarModalError = () => {
+    setShowVentaErrorModal(false);
+    setVentaErrorMessage("");
   };
 
   return (
@@ -520,22 +842,31 @@ export function PuntoDeVentaView() {
           </div>
         </div>
 
-        <CajaEstado cajaAbierta={cajaAbierta} cajaId={cajaId} />
+        {isLoadingCaja ? (
+          <div className="mt-6 flex items-center gap-2 text-sm text-gray-500 dark:text-dark-200">
+            <div className="inline-block size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            <span>Cargando estado de la caja...</span>
+          </div>
+        ) : (
+          <>
+            <CajaEstado cajaAbierta={cajaAbierta} cajaId={cajaId} />
 
-        <CajaControls
-          cajaAbierta={cajaAbierta}
-          currentPv={currentPv}
-          user={user}
-          onAbrirCaja={solicitarAbrirCaja}
-          onCerrarCaja={solicitarCerrarCaja}
-          onIngresarEfectivo={() => abrirModalMovimiento("ingreso")}
-          onRetirarEfectivo={() => abrirModalMovimiento("retiro")}
-        />
+            <CajaControls
+              cajaAbierta={cajaAbierta}
+              currentPv={currentPv}
+              user={user}
+              onAbrirCaja={solicitarAbrirCaja}
+              onCerrarCaja={solicitarCerrarCaja}
+              onIngresarEfectivo={() => abrirModalMovimiento("ingreso")}
+              onRetirarEfectivo={() => abrirModalMovimiento("retiro")}
+            />
 
-        {!cajaAbierta && (
-          <p className="mt-3 text-sm text-warning-600 dark:text-warning-400">
-            Para realizar ventas, primero debes abrir la caja.
-          </p>
+            {!cajaAbierta && (
+              <p className="mt-3 text-sm text-warning-600 dark:text-warning-400">
+                Para realizar ventas, primero debes abrir la caja.
+              </p>
+            )}
+          </>
         )}
       </div>
 
@@ -590,6 +921,13 @@ export function PuntoDeVentaView() {
                       "Buscar Cliente"
                     )}
                   </Button>
+                  {isConsumidorFinal && (
+                    <div className="flex items-center rounded-lg border border-primary-200 bg-primary-50 px-4 py-2 dark:border-primary-800 dark:bg-primary-900/20">
+                      <p className="text-sm font-semibold text-primary-700 dark:text-primary-300">
+                        No Socio
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Datos del cliente y familiares */}
@@ -813,45 +1151,57 @@ export function PuntoDeVentaView() {
                   <h4 className="text-xs font-semibold text-gray-600 dark:text-dark-300">
                     Método de Pago
                   </h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setMetodoPago("efectivo")}
-                      className={`flex flex-col items-center gap-1 rounded-lg border p-2 text-xs transition-colors ${
-                        metodoPago === "efectivo"
-                          ? "border-primary-500 bg-primary-50 dark:border-primary-500 dark:bg-primary-900/30"
-                          : "border-gray-200 bg-white hover:border-primary-300 hover:bg-primary-50 dark:border-dark-600 dark:bg-dark-700 dark:hover:border-primary-500"
-                      }`}
-                    >
-                      <span className="text-lg">💵</span>
-                      <span>Efectivo</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMetodoPago("tarjeta")}
-                      className={`flex flex-col items-center gap-1 rounded-lg border p-2 text-xs transition-colors ${
-                        metodoPago === "tarjeta"
-                          ? "border-primary-500 bg-primary-50 dark:border-primary-500 dark:bg-primary-900/30"
-                          : "border-gray-200 bg-white hover:border-primary-300 hover:bg-primary-50 dark:border-dark-600 dark:bg-dark-700 dark:hover:border-primary-500"
-                      }`}
-                    >
-                      <span className="text-lg">💳</span>
-                      <span>Tarjeta</span>
-                    </button>
-                  </div>
+                  {isLoadingMediosPago ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Spinner className="size-4" />
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      {mediosPago.map((medio) => (
+                        <button
+                          key={medio.id}
+                          type="button"
+                          onClick={() => setMetodoPagoId(medio.id)}
+                          className={`flex flex-col items-center gap-1 rounded-lg border p-2 text-xs transition-colors ${
+                            metodoPagoId === medio.id
+                              ? "border-primary-500 bg-primary-50 dark:border-primary-500 dark:bg-primary-900/30"
+                              : "border-gray-200 bg-white hover:border-primary-300 hover:bg-primary-50 dark:border-dark-600 dark:bg-dark-700 dark:hover:border-primary-500"
+                          }`}
+                        >
+                          <span className="text-lg">
+                            {medio.nombre.toLowerCase().includes("efectivo") ? "💵" :
+                             medio.nombre.toLowerCase().includes("tarjeta") ? "💳" :
+                             medio.nombre.toLowerCase().includes("transferencia") ? "🏦" :
+                             medio.nombre.toLowerCase().includes("mercado") ? "🛒" :
+                             medio.nombre.toLowerCase().includes("qr") ? "📱" : "💳"}
+                          </span>
+                          <span>{medio.nombre}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Botón Cobrar */}
                 <Button
                   color="primary"
                   className="w-full"
-                  disabled={!clienteData || !dni || detalleItems.length === 0 || familiaresSeleccionados.size === 0}
+                  disabled={(!clienteData && !isConsumidorFinal) || !dni || detalleItems.length === 0 || (!isConsumidorFinal && familiaresSeleccionados.size === 0) || isProcesandoVenta}
                   onClick={handleCobrar}
                 >
-                  Cobrar
-                  <span className="ml-2">
-                    ${detalleItems.reduce((sum, item) => sum + item.subtotal, 0).toFixed(2)}
-                  </span>
+                  {isProcesandoVenta ? (
+                    <>
+                      <Spinner className="mr-2 size-4 border-white" />
+                      Procesando...
+                    </>
+                  ) : (
+                    <>
+                      Cobrar
+                      <span className="ml-2">
+                        ${detalleItems.reduce((sum, item) => sum + item.subtotal, 0).toFixed(2)}
+                      </span>
+                    </>
+                  )}
                 </Button>
                 {!clienteData && dni && (
                   <p className="mt-2 text-xs text-warning-600 dark:text-warning-400">
@@ -917,11 +1267,63 @@ export function PuntoDeVentaView() {
             cantidad: item.cantidad,
             precio: item.precio,
             subtotal: item.precio * item.cantidad,
+            // Productos extra: afiliado_id = null, es_titular = false
+            afiliadoId: null,
+            esTitular: false,
           }));
           
           setDetalleItems((prev) => [...prev, ...nuevosItems]);
         }}
       />
+
+      {/* Modal de Venta Exitosa */}
+      <ConfirmModal
+        show={showVentaExitoModal}
+        onClose={handleCerrarModalExito}
+        onOk={handleCerrarModalExito}
+        state="success"
+        confirmLoading={false}
+        messages={{
+          success: {
+            title: "Venta realizada exitosamente",
+            description: "La venta se ha procesado correctamente y el recibo se ha generado.",
+            actionText: "Aceptar",
+          },
+        }}
+      />
+
+      {/* Modal de Error en Venta */}
+      <ConfirmModal
+        show={showVentaErrorModal}
+        onClose={handleCerrarModalError}
+        onOk={handleCerrarModalError}
+        state="error"
+        confirmLoading={false}
+        messages={{
+          error: {
+            title: "Error al procesar la venta",
+            description: ventaErrorMessage,
+            actionText: "Cerrar",
+          },
+        }}
+      />
+
+      {/* Modal de Procesando Venta */}
+      {isProcesandoVenta && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="rounded-lg border border-gray-200 bg-white p-8 shadow-xl dark:border-dark-600 dark:bg-dark-800">
+            <div className="flex flex-col items-center gap-4">
+              <Spinner color="primary" className="size-12" />
+              <p className="text-lg font-semibold text-gray-900 dark:text-dark-50">
+                Procesando venta...
+              </p>
+              <p className="text-sm text-gray-500 dark:text-dark-400">
+                Por favor, espera un momento
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

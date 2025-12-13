@@ -32,32 +32,23 @@ interface ListaPreciosResponse {
   deletedAt?: string | null;
 }
 
-interface ProductoPrecioResponse {
-  id: number;
-  listaPrecioId: number;
-  productoId: number;
-  precio: number;
-  tipoMonedaId: number;
-  createdAt: string;
-  updatedAt: string;
-  deletedAt: string | null;
-  listaPrecio: {
-    id: number;
-    nombre: string;
-    descripcion: string;
-    createdAt: string;
-    updatedAt: string;
-    deletedAt: string | null;
-  };
+interface ProductoPrecioItem {
+  lista_precio_id: number;
+  nombre_lista: string;
+  precio_unitario: string;
+}
+
+interface ProductoPreciosResponse {
+  precios: ProductoPrecioItem[];
 }
 
 interface Producto {
   id: number;
   nombre: string;
   descripcion: string;
-  codigoProducto: number;
-  controlaStock?: boolean;
-  puntosVenta?: PuntoDeVenta[];
+  codigo_producto: string;
+  controla_stock?: boolean;
+  puntos_venta?: PuntoDeVenta[];
   categorias?: Categoria[];
 }
 
@@ -65,27 +56,27 @@ interface ProductoResponse {
   id: number;
   nombre: string;
   descripcion: string;
-  codigoProducto: number;
-  controlaStock?: boolean;
-  puntosVenta?: Array<{ id: number; nombre: string }>;
+  codigo_producto: string;
+  controla_stock?: boolean;
+  puntos_venta?: Array<{ id: number; nombre: string }>;
   categorias?: Array<{ id: number; nombre: string }>;
 }
 
 interface ProductoFormData {
   nombre: string;
   descripcion: string;
-  codigoProducto: string;
-  controlaStock: boolean;
-  puntosVenta: number[];
+  codigo_producto: string;
+  controla_stock: boolean;
+  puntos_venta: number[];
   categorias: number[];
 }
 
 const initialFormData: ProductoFormData = {
   nombre: "",
   descripcion: "",
-  codigoProducto: "",
-  controlaStock: false,
-  puntosVenta: [],
+  codigo_producto: "",
+  controla_stock: false,
+  puntos_venta: [],
   categorias: [],
 };
 
@@ -120,16 +111,16 @@ export function ProductosTab() {
     setListError(null);
 
     try {
-      const response = await axios.get<ProductoResponse[]>("/productos");
+      const response = await axios.get<ProductoResponse[]>("/api/productos");
       
       // Mapear la respuesta
       const productosMapeados: Producto[] = response.data.map((prod) => ({
         id: prod.id,
         nombre: prod.nombre,
         descripcion: prod.descripcion || "",
-        codigoProducto: prod.codigoProducto,
-        controlaStock: prod.controlaStock || false,
-        puntosVenta: prod.puntosVenta || [],
+        codigo_producto: prod.codigo_producto,
+        controla_stock: prod.controla_stock || false,
+        puntos_venta: prod.puntos_venta || [],
         categorias: prod.categorias || [],
       }));
 
@@ -160,7 +151,7 @@ export function ProductosTab() {
   // Función para cargar las categorías
   const loadCategorias = async () => {
     try {
-      const response = await axios.get<Categoria[]>("/categorias-producto");
+      const response = await axios.get<Categoria[]>("/api/productos/categorias");
       setCategorias(response.data);
     } catch (err: any) {
       console.error("Error al cargar categorías:", err);
@@ -170,7 +161,7 @@ export function ProductosTab() {
   // Función para cargar los puntos de venta
   const loadPuntosVenta = async () => {
     try {
-      const response = await axios.get<PuntoDeVenta[]>("/puntos-venta");
+      const response = await axios.get<PuntoDeVenta[]>("/api/puntos-venta");
       setPuntosVenta(response.data);
     } catch (err: any) {
       console.error("Error al cargar puntos de venta:", err);
@@ -180,7 +171,7 @@ export function ProductosTab() {
   // Función para cargar las listas de precios
   const loadListasPrecios = async () => {
     try {
-      const response = await axios.get<ListaPreciosResponse[]>("/lista-precios");
+      const response = await axios.get<ListaPreciosResponse[]>("/api/listas-precio");
       
       // Mapear la respuesta correctamente
       const listasMapeadas: ListaPrecios[] = response.data.map((lista) => ({
@@ -218,9 +209,9 @@ export function ProductosTab() {
     setFormData({
       nombre: producto.nombre,
       descripcion: producto.descripcion || "",
-      codigoProducto: producto.codigoProducto.toString(),
-      controlaStock: producto.controlaStock || false,
-      puntosVenta: producto.puntosVenta?.map(pv => pv.id) || [],
+      codigo_producto: producto.codigo_producto,
+      controla_stock: producto.controla_stock || false,
+      puntos_venta: producto.puntos_venta?.map(pv => pv.id) || [],
       categorias: producto.categorias?.map(cat => cat.id) || [],
     });
     setFormErrors({});
@@ -235,7 +226,7 @@ export function ProductosTab() {
     }
 
     try {
-      await axios.delete(`/productos/${id}`);
+      await axios.delete(`/api/productos/${id}`);
       
       // Recargar la lista después de eliminar
       await loadProductos();
@@ -268,10 +259,8 @@ export function ProductosTab() {
       errors.nombre = "El nombre es requerido";
     }
 
-    if (!formData.codigoProducto.trim()) {
-      errors.codigoProducto = "El código de producto es requerido";
-    } else if (isNaN(parseInt(formData.codigoProducto)) || parseInt(formData.codigoProducto) < 0) {
-      errors.codigoProducto = "El código debe ser un número válido";
+    if (!formData.codigo_producto.trim()) {
+      errors.codigo_producto = "El código de producto es requerido";
     }
 
     if (formData.categorias.length === 0) {
@@ -294,16 +283,16 @@ export function ProductosTab() {
     try {
       const payload = {
         nombre: formData.nombre,
-        codigoProducto: parseInt(formData.codigoProducto),
+        codigo_producto: formData.codigo_producto,
         descripcion: formData.descripcion,
-        controlaStock: formData.controlaStock,
-        puntosVenta: formData.puntosVenta,
+        controla_stock: formData.controla_stock,
+        puntos_venta: formData.puntos_venta,
         categorias: formData.categorias,
       };
 
       if (editingId) {
         // Editar producto existente
-        await axios.patch(`/productos/${editingId}`, payload);
+        await axios.patch(`/api/productos/${editingId}`, payload);
 
         // Recargar la lista después de editar
         await loadProductos();
@@ -313,7 +302,7 @@ export function ProductosTab() {
         setEditingId(null);
       } else {
         // Crear nuevo producto
-        await axios.post("/productos", payload);
+        await axios.post("/api/productos", payload);
 
         // Recargar la lista después de crear
         await loadProductos();
@@ -349,12 +338,12 @@ export function ProductosTab() {
   // Función para manejar selección de puntos de venta
   const handlePuntoVentaToggle = (puntoVentaId: number) => {
     setFormData(prev => {
-      const isSelected = prev.puntosVenta.includes(puntoVentaId);
+      const isSelected = prev.puntos_venta.includes(puntoVentaId);
       return {
         ...prev,
-        puntosVenta: isSelected
-          ? prev.puntosVenta.filter(id => id !== puntoVentaId)
-          : [...prev.puntosVenta, puntoVentaId]
+        puntos_venta: isSelected
+          ? prev.puntos_venta.filter(id => id !== puntoVentaId)
+          : [...prev.puntos_venta, puntoVentaId]
       };
     });
   };
@@ -392,7 +381,7 @@ export function ProductosTab() {
     let listasActuales = listasPrecios;
     if (listasActuales.length === 0) {
       try {
-        const response = await axios.get<ListaPreciosResponse[]>("/lista-precios");
+        const response = await axios.get<ListaPreciosResponse[]>("/api/listas-precio");
         listasActuales = response.data.map((lista) => ({
           id: lista.id,
           nombre: lista.nombre,
@@ -415,12 +404,12 @@ export function ProductosTab() {
     
     // Cargar precios existentes del producto
     try {
-      const response = await axios.get<ProductoPrecioResponse[]>(`/productos/precios/producto/${producto.id}`);
+      const response = await axios.get<ProductoPreciosResponse>(`/api/productos/${producto.id}/precios`);
       
       // Mapear los precios existentes al formato del estado
-      response.data.forEach((precioData) => {
-        if (precioData.listaPrecioId && precioData.precio !== null && precioData.precio !== undefined) {
-          preciosIniciales[precioData.listaPrecioId] = precioData.precio.toString();
+      response.data.precios.forEach((precioData) => {
+        if (precioData.lista_precio_id && precioData.precio_unitario) {
+          preciosIniciales[precioData.lista_precio_id] = precioData.precio_unitario;
         }
       });
       
@@ -454,6 +443,7 @@ export function ProductosTab() {
 
     try {
       // Guardar precio para cada lista de precios que tenga un valor
+      // Se hace una petición por cada lista de precio
       const promesas = Object.entries(precios)
         .filter(([_, precio]) => precio.trim() !== "")
         .map(async ([listaPrecioId, precio]) => {
@@ -462,12 +452,16 @@ export function ProductosTab() {
             throw new Error(`El precio para la lista ${listaPrecioId} no es válido`);
           }
 
-          // Usar POST para agregar el precio según el ID de la lista
-          await axios.post("/lista-precios/agregar-producto", {
-            listaPrecioId: parseInt(listaPrecioId),
-            productoId: productoSeleccionado.id,
-            precio: precioNumero,
-            tipoMonedaId: 1, // Por defecto, ajustar si es necesario
+          // Nuevo formato: una petición por lista de precio
+          await axios.post("/api/listas-precio/productos/agregar", {
+            lista_precio_id: parseInt(listaPrecioId),
+            productos: [
+              {
+                producto_id: productoSeleccionado.id,
+                precio_unitario: precioNumero,
+                tipo_moneda_id: 1, // Siempre 1
+              }
+            ]
           });
         });
 
@@ -579,7 +573,7 @@ export function ProductosTab() {
                     >
                       <td className="px-4 py-3">
                         <span className="font-mono text-sm text-gray-600 dark:text-dark-200">
-                          {producto.codigoProducto}
+                          {producto.codigo_producto}
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -685,12 +679,12 @@ export function ProductosTab() {
                     type="number"
                     min="0"
                     placeholder="Ej: 1001"
-                    value={formData.codigoProducto}
+                    value={formData.codigo_producto}
                     onChange={(e) => {
-                      setFormData({ ...formData, codigoProducto: e.target.value });
+                      setFormData({ ...formData, codigo_producto: e.target.value });
                       setError(null);
                     }}
-                    error={formErrors.codigoProducto}
+                    error={formErrors.codigo_producto}
                     required
                     disabled={isLoading}
                   />
@@ -713,9 +707,9 @@ export function ProductosTab() {
                 <div>
                   <Checkbox
                     label="Utiliza stock"
-                    checked={formData.controlaStock}
+                    checked={formData.controla_stock}
                     onChange={(e) => {
-                      setFormData({ ...formData, controlaStock: e.target.checked });
+                      setFormData({ ...formData, controla_stock: e.target.checked });
                       setError(null);
                     }}
                     disabled={isLoading}
@@ -772,7 +766,7 @@ export function ProductosTab() {
                           className="flex cursor-pointer items-center gap-2 rounded p-2 hover:bg-gray-50 dark:hover:bg-dark-800"
                         >
                           <Checkbox
-                            checked={formData.puntosVenta.includes(puntoVenta.id)}
+                            checked={formData.puntos_venta.includes(puntoVenta.id)}
                             onChange={() => handlePuntoVentaToggle(puntoVenta.id)}
                             disabled={isLoading}
                           />

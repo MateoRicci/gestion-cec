@@ -27,7 +27,7 @@ interface ReciboData {
   cliente: ClienteData;
   detalleItems: DetalleItem[];
   puntoDeVenta: PuntoDeVenta;
-  metodoPago: "efectivo" | "tarjeta";
+  metodoPago: string;
   numeroRecibo?: string;
 }
 
@@ -317,8 +317,7 @@ export async function generateRecibo(data: ReciboData): Promise<void> {
   doc.setFont("helvetica", "normal");
   
   // Mostrar el método de pago seleccionado
-  const metodoPagoTexto = metodoPago === "efectivo" ? "Efectivo" : "Tarjeta";
-  addText(metodoPagoTexto, marginLeft + formaPagoBoxWidth / 2, yPosition + 15, { fontSize: 9, align: "center" });
+  addText(metodoPago, marginLeft + formaPagoBoxWidth / 2, yPosition + 15, { fontSize: 9, align: "center" });
 
   // Abrir el PDF en una nueva pestaña en lugar de descargarlo
   doc.output("dataurlnewwindow");

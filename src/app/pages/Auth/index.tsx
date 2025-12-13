@@ -32,14 +32,14 @@ export default function SignIn() {
   } = useForm({
     resolver: yupResolver(schema),
     defaultValues: {
-      usuario: "",
+      username: "",
       password: "",
     },
   });
 
   const onSubmit = (data: AuthFormValues) => {
     login({
-      usuario: data.usuario,
+      username: data.username,
       password: data.password,
     });
   };
@@ -98,8 +98,8 @@ export default function SignIn() {
                       strokeWidth="1"
                     />
                   }
-                  {...register("usuario")}
-                  error={errors?.usuario?.message}
+                  {...register("username")}
+                  error={errors?.username?.message}
                 />
                 <Input
                   unstyled
