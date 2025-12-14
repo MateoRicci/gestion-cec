@@ -51,6 +51,7 @@ interface Familiar {
   dni_familiar: string;
   relacion: string;
   edad_categoria: "mayor" | "menor";
+  compro_hoy?: boolean; // Indica si ya compró/ingresó hoy
 }
 
 interface Titular {
@@ -60,6 +61,7 @@ interface Titular {
   apellido_titular: string;
   dni_titular: string;
   convenio: string;
+  compro_hoy?: boolean; // Indica si ya compró/ingresó hoy
 }
 
 interface ClienteData {
@@ -76,6 +78,7 @@ interface AfiliadoResponse {
   fecha_baja: string | null;
   fecha_ultimo_aporte: string | null;
   cliente: string;
+  compro_hoy?: boolean; // Indica si el titular ya compró/ingresó hoy
   convenio: {
     id: number;
     nombre: string;
@@ -89,6 +92,7 @@ interface AfiliadoResponse {
     id_afiliado: string;
     tipo_familiar_id: number;
     vencimiento_cargo: string | null;
+    compro_hoy?: boolean; // Indica si el familiar ya compró/ingresó hoy
     persona: {
       nombre: string;
       apellido: string;
@@ -470,6 +474,7 @@ export function PuntoDeVentaView() {
           apellido_titular: afiliado.titular.apellido || "",
           dni_titular: afiliado.titular.numero_documento?.toString() || "",
           convenio: afiliado.convenio?.nombre || "",
+          compro_hoy: afiliado.compro_hoy || false,
         },
         familiares: afiliado.familiares?.map((familiar) => ({
           id_familiar: familiar.id_afiliado,
@@ -479,6 +484,7 @@ export function PuntoDeVentaView() {
           dni_familiar: familiar.persona.numero_documento.toString(),
           relacion: familiar.parentesco,
           edad_categoria: familiar.persona.edad_categoria === "menor" ? "menor" : "mayor",
+          compro_hoy: familiar.compro_hoy || false,
         })),
       };
 
@@ -493,21 +499,29 @@ export function PuntoDeVentaView() {
         loadPrecioEntradaSocio(productoEntradaMenorId, "menor", convenioNombre);
       }
 
-      // Marcar el DNI buscado por defecto
+      // Marcar el DNI buscado por defecto (solo si no compró hoy)
       const seleccionados = new Set<string>();
-      // Si es el titular, marcarlo
+      // Si es el titular, marcarlo solo si no compró hoy
+      // if (dniBuscado === clienteData.titular.dni_titular && !clienteData.titular.compro_hoy) {
+      //   seleccionados.add(`titular-${clienteData.titular.dni_titular}`);
+      // }
+
       if (dniBuscado === clienteData.titular.dni_titular) {
         seleccionados.add(`titular-${clienteData.titular.dni_titular}`);
       }
-      // Si es un familiar, marcarlo
+      // Si es un familiar, marcarlo solo si no compró hoy
       if (clienteData.familiares) {
         clienteData.familiares.forEach((familiar) => {
+          // if (dniBuscado === familiar.dni_familiar && !familiar.compro_hoy) {
+          //   seleccionados.add(`familiar-${familiar.dni_familiar}`);
+          // }
+
           if (dniBuscado === familiar.dni_familiar) {
             seleccionados.add(`familiar-${familiar.dni_familiar}`);
           }
         });
       }
-      // Si no se encontró el DNI buscado en titular ni familiares, marcar el titular por defecto
+      // Si no se encontró el DNI buscado en titular ni familiares, marcar el titular por defecto (solo si no compró hoy)
       if (seleccionados.size === 0) {
         seleccionados.add(`titular-${clienteData.titular.dni_titular}`);
       }
@@ -545,8 +559,9 @@ export function PuntoDeVentaView() {
       edad_categoria: "mayor" | "menor";
     }> = [];
 
-    // Agregar titular si está seleccionado (siempre es mayor)
-    if (familiaresSeleccionados.has(`titular-${clienteData.titular.dni_titular}`)) {
+    // Agregar titular si está seleccionado (siempre es mayor) y no compró hoy
+    // if (familiaresSeleccionados.has(`titular-${clienteData.titular.dni_titular}`) && !clienteData.titular.compro_hoy) {
+      if (familiaresSeleccionados.has(`titular-${clienteData.titular.dni_titular}`)) {      
       personasSeleccionadas.push({
         dni: clienteData.titular.dni_titular,
         nombre: `${clienteData.titular.nombre_titular} ${clienteData.titular.apellido_titular}`,
@@ -555,9 +570,10 @@ export function PuntoDeVentaView() {
       });
     }
 
-    // Agregar familiares seleccionados con su categoría de edad
+    // Agregar familiares seleccionados con su categoría de edad (solo si no compraron hoy)
     if (clienteData.familiares) {
       clienteData.familiares.forEach((familiar) => {
+        // if (familiaresSeleccionados.has(`familiar-${familiar.dni_familiar}`) && !familiar.compro_hoy) {
         if (familiaresSeleccionados.has(`familiar-${familiar.dni_familiar}`)) {
           personasSeleccionadas.push({
             dni: familiar.dni_familiar,
@@ -590,8 +606,8 @@ export function PuntoDeVentaView() {
           // Para consumidor final, usar el producto de entrada general
           productoId = productoEntradaId || 0;
           precio = precioEntradaNoSocio || 0;
-          nombreLista = "Entrada No Socio";
-          productoNombre = `Entrada No Socio ${persona.nombre}`;
+          nombreLista = "Entrada No Afiliado";
+          productoNombre = `Entrada No Afiliado ${persona.nombre}`;
           // Consumidor final: afiliado_id = null
           afiliadoId = null;
         } else {
@@ -599,13 +615,13 @@ export function PuntoDeVentaView() {
           if (persona.edad_categoria === "mayor") {
             productoId = productoEntradaMayorId || 0;
             precio = precioEntradaMayor || 0;
-            nombreLista = "Entrada Socio Mayor";
-            productoNombre = `Entrada Socio Mayor ${persona.nombre}`;
+            nombreLista = "Entrada Afiliado Mayor";
+            productoNombre = `Entrada Afiliado Mayor ${persona.nombre}`;
           } else {
             productoId = productoEntradaMenorId || 0;
             precio = precioEntradaMenor || 0;
-            nombreLista = "Entrada Socio Menor";
-            productoNombre = `Entrada Socio Menor ${persona.nombre}`;
+            nombreLista = "Entrada Afiliado Menor";
+            productoNombre = `Entrada Afiliado Menor ${persona.nombre}`;
           }
           
           // Obtener el id_afiliado según el tipo de persona
@@ -742,8 +758,9 @@ export function PuntoDeVentaView() {
       // Log de la respuesta
       console.log("Respuesta del servidor:", response.data);
 
-      // Generar número de recibo único (timestamp)
-      const numeroRecibo = `REC-${Date.now()}`;
+      // Usar el ID de la venta devuelto por el backend
+      const ventaId = response.data?.id || response.data?.venta?.id || response.data?.data?.id;
+      const numeroRecibo = ventaId ? ventaId.toString() : "000";
 
       // Obtener el nombre del método de pago seleccionado
       const medioPagoSeleccionado = mediosPago.find((mp) => mp.id === metodoPagoId);
@@ -751,7 +768,7 @@ export function PuntoDeVentaView() {
 
       // Generar el recibo PDF
       await generateRecibo({
-        cliente: clienteData || { titular: { id_titular: "", id_cliente_titular: clienteId, nombre_titular: "", apellido_titular: "", dni_titular: dni, convenio: "No Socio" } },
+        cliente: clienteData || { titular: { id_titular: "", id_cliente_titular: clienteId, nombre_titular: "", apellido_titular: "", dni_titular: dni, convenio: "No Afiliado" } },
         detalleItems,
         puntoDeVenta: currentPv,
         metodoPago: metodoPagoNombre,
@@ -918,13 +935,20 @@ export function PuntoDeVentaView() {
                     {isLoadingCliente ? (
                       <Spinner className="size-4 border-white" />
                     ) : (
-                      "Buscar Cliente"
+                      "Buscar Afiliado"
                     )}
                   </Button>
                   {isConsumidorFinal && (
-                    <div className="flex items-center rounded-lg border border-primary-200 bg-primary-50 px-4 py-2 dark:border-primary-800 dark:bg-primary-900/20">
-                      <p className="text-sm font-semibold text-primary-700 dark:text-primary-300">
-                        No Socio
+                    <div 
+                      className="flex items-center rounded-lg px-4 py-2"
+                      style={{ 
+                        backgroundColor: '#ef4444', 
+                        border: '1px solid #ef4444',
+                        color: '#ffffff'
+                      }}
+                    >
+                      <p className="text-sm font-semibold" style={{ color: '#ffffff' }}>
+                        No Afiliado
                       </p>
                     </div>
                   )}
@@ -951,6 +975,7 @@ export function PuntoDeVentaView() {
                               }
                               setFamiliaresSeleccionados(newSeleccionados);
                             }}
+                            // disabled={clienteData.titular.compro_hoy === true}
                           />
                           <div className="flex-1">
                             <p className="text-sm font-medium text-gray-900 dark:text-dark-50">
@@ -960,6 +985,20 @@ export function PuntoDeVentaView() {
                               DNI: {clienteData.titular.dni_titular} - {clienteData.titular.convenio}
                             </p>
                           </div>
+                          {clienteData.titular.compro_hoy === true && (
+                            <div 
+                              className="flex items-center rounded-lg px-3 py-1.5"
+                              style={{ 
+                                backgroundColor: '#ef4444', 
+                                border: '1px solid #ef4444',
+                                color: '#ffffff'
+                              }}
+                            >
+                              <p className="text-xs font-semibold" style={{ color: '#ffffff' }}>
+                                Ya ingresó
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -984,6 +1023,7 @@ export function PuntoDeVentaView() {
                                   }
                                   setFamiliaresSeleccionados(newSeleccionados);
                                 }}
+                                // disabled={familiar.compro_hoy === true}
                               />
                               <div className="flex-1">
                                 <p className="text-sm font-medium text-gray-900 dark:text-dark-50">
@@ -993,6 +1033,20 @@ export function PuntoDeVentaView() {
                                   DNI: {familiar.dni_familiar} - {familiar.relacion}
                                 </p>
                               </div>
+                              {familiar.compro_hoy === true && (
+                                <div 
+                                  className="flex items-center rounded-lg px-3 py-1.5"
+                                  style={{ 
+                                    backgroundColor: '#ef4444', 
+                                    border: '1px solid #ef4444',
+                                    color: '#ffffff'
+                                  }}
+                                >
+                                  <p className="text-xs font-semibold" style={{ color: '#ffffff' }}>
+                                    Ya ingresó
+                                  </p>
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -1141,7 +1195,10 @@ export function PuntoDeVentaView() {
                       Total:
                     </span>
                     <span className="text-lg font-bold text-gray-900 dark:text-dark-50">
-                      ${detalleItems.reduce((sum, item) => sum + item.subtotal, 0).toFixed(2)}
+                      ${Math.round(detalleItems.reduce((sum, item) => sum + item.subtotal, 0)).toLocaleString('es-AR', {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0
+                      })}
                     </span>
                   </div>
                 </div>
@@ -1198,7 +1255,10 @@ export function PuntoDeVentaView() {
                     <>
                       Cobrar
                       <span className="ml-2">
-                        ${detalleItems.reduce((sum, item) => sum + item.subtotal, 0).toFixed(2)}
+                        ${Math.round(detalleItems.reduce((sum, item) => sum + item.subtotal, 0)).toLocaleString('es-AR', {
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0
+                        })}
                       </span>
                     </>
                   )}
