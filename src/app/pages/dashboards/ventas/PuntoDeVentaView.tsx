@@ -502,23 +502,24 @@ export function PuntoDeVentaView() {
       // Marcar el DNI buscado por defecto (solo si no compró hoy)
       const seleccionados = new Set<string>();
       // Si es el titular, marcarlo solo si no compró hoy
-      // if (dniBuscado === clienteData.titular.dni_titular && !clienteData.titular.compro_hoy) {
-      //   seleccionados.add(`titular-${clienteData.titular.dni_titular}`);
-      // }
-
-      if (dniBuscado === clienteData.titular.dni_titular) {
+      if (dniBuscado === clienteData.titular.dni_titular && !clienteData.titular.compro_hoy) {
         seleccionados.add(`titular-${clienteData.titular.dni_titular}`);
       }
+
+      // sin restricciones de compra hoy
+      // if (dniBuscado === clienteData.titular.dni_titular) {
+      //   seleccionados.add(`titular-${clienteData.titular.dni_titular}`);
+      // }
       // Si es un familiar, marcarlo solo si no compró hoy
       if (clienteData.familiares) {
         clienteData.familiares.forEach((familiar) => {
-          // if (dniBuscado === familiar.dni_familiar && !familiar.compro_hoy) {
-          //   seleccionados.add(`familiar-${familiar.dni_familiar}`);
-          // }
-
-          if (dniBuscado === familiar.dni_familiar) {
+          if (dniBuscado === familiar.dni_familiar && !familiar.compro_hoy) {
             seleccionados.add(`familiar-${familiar.dni_familiar}`);
           }
+
+          // if (dniBuscado === familiar.dni_familiar) {
+          //   seleccionados.add(`familiar-${familiar.dni_familiar}`);
+          // }
         });
       }
       // Si no se encontró el DNI buscado en titular ni familiares, marcar el titular por defecto (solo si no compró hoy)
@@ -560,8 +561,8 @@ export function PuntoDeVentaView() {
     }> = [];
 
     // Agregar titular si está seleccionado (siempre es mayor) y no compró hoy
-    // if (familiaresSeleccionados.has(`titular-${clienteData.titular.dni_titular}`) && !clienteData.titular.compro_hoy) {
-      if (familiaresSeleccionados.has(`titular-${clienteData.titular.dni_titular}`)) {      
+    if (familiaresSeleccionados.has(`titular-${clienteData.titular.dni_titular}`) && !clienteData.titular.compro_hoy) {
+      // if (familiaresSeleccionados.has(`titular-${clienteData.titular.dni_titular}`)) {      
       personasSeleccionadas.push({
         dni: clienteData.titular.dni_titular,
         nombre: `${clienteData.titular.nombre_titular} ${clienteData.titular.apellido_titular}`,
@@ -573,8 +574,8 @@ export function PuntoDeVentaView() {
     // Agregar familiares seleccionados con su categoría de edad (solo si no compraron hoy)
     if (clienteData.familiares) {
       clienteData.familiares.forEach((familiar) => {
-        // if (familiaresSeleccionados.has(`familiar-${familiar.dni_familiar}`) && !familiar.compro_hoy) {
-        if (familiaresSeleccionados.has(`familiar-${familiar.dni_familiar}`)) {
+        if (familiaresSeleccionados.has(`familiar-${familiar.dni_familiar}`) && !familiar.compro_hoy) {
+        // if (familiaresSeleccionados.has(`familiar-${familiar.dni_familiar}`)) {
           personasSeleccionadas.push({
             dni: familiar.dni_familiar,
             nombre: `${familiar.nombre_familiar} ${familiar.apellido_familiar}`,
@@ -975,7 +976,7 @@ export function PuntoDeVentaView() {
                               }
                               setFamiliaresSeleccionados(newSeleccionados);
                             }}
-                            // disabled={clienteData.titular.compro_hoy === true}
+                            disabled={clienteData.titular.compro_hoy === true}
                           />
                           <div className="flex-1">
                             <p className="text-sm font-medium text-gray-900 dark:text-dark-50">
@@ -1023,7 +1024,7 @@ export function PuntoDeVentaView() {
                                   }
                                   setFamiliaresSeleccionados(newSeleccionados);
                                 }}
-                                // disabled={familiar.compro_hoy === true}
+                                disabled={familiar.compro_hoy === true}
                               />
                               <div className="flex-1">
                                 <p className="text-sm font-medium text-gray-900 dark:text-dark-50">

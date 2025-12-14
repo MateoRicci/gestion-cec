@@ -45,7 +45,7 @@ export function Profile() {
           anchor={{ to: "right end", gap: 12 }}
           className="z-70 flex w-64 flex-col rounded-lg border border-gray-150 bg-white shadow-soft transition dark:border-dark-600 dark:bg-dark-700 dark:shadow-none"
         >
-          {({ close }) => (
+          {() => (
             <>
               {/* User Info */}
               <div className="flex items-center gap-4 rounded-t-lg bg-gray-100 px-4 py-5 dark:bg-dark-800">

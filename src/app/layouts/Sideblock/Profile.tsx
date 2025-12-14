@@ -1,5 +1,4 @@
 // Import Dependencies
-import React from "react";
 import {
   Popover,
   PopoverButton,
@@ -45,7 +44,7 @@ export function Profile() {
           anchor={{ to: "bottom end", gap: 12 }}
           className="border-gray-150 shadow-soft dark:border-dark-600 dark:bg-dark-700 z-70 flex w-64 flex-col rounded-lg border bg-white transition dark:shadow-none"
         >
-          {({ close }: { close: () => void }) => (
+          {() => (
             <>
               <div className="dark:bg-dark-800 flex items-center gap-4 rounded-t-lg bg-gray-100 px-4 py-5">
                 <Avatar size={14} name={username} />

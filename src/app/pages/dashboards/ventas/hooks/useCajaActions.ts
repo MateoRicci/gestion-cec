@@ -94,104 +94,97 @@ export function useCajaActions(
     setConfirmState("pending");
 
     try {
-      // Obtener datos reales de la caja, movimientos y ventas
-      
+      // Obtener datos reales de la caja, movimientos y ventas (comentado para uso futuro)
       // 1. Obtener información de la caja (usar el endpoint de caja abierta)
-      const cajaResponse = await axios.get<{ id: number; nombre: string; descripcion: string; usuario_id: number; punto_venta_id: number }>("/api/cajas/abierta");
-      const caja = cajaResponse.data;
+      // await axios.get<{ id: number; nombre: string; descripcion: string; usuario_id: number; punto_venta_id: number }>("/api/cajas/abierta");
       
       // 2. Obtener movimientos de la caja
-      const movimientosResponse = await axios.get(`/api/cajas/${cajaId}/movimientos`);
-      const movimientosData = movimientosResponse.data;
+      // const movimientosResponse = await axios.get(`/api/cajas/${cajaId}/movimientos`);
+      // const movimientosData = movimientosResponse.data;
       
       // 3. Obtener ventas de la caja (si existe el endpoint)
-      let ventasData: any[] = [];
-      try {
-        const ventasResponse = await axios.get(`/api/cajas/${cajaId}/ventas`);
-        ventasData = ventasResponse.data || [];
-      } catch (error) {
-        console.warn("No se pudo obtener las ventas de la caja:", error);
-      }
+      // let ventasData: any[] = [];
+      // try {
+      //   const ventasResponse = await axios.get(`/api/cajas/${cajaId}/ventas`);
+      //   ventasData = ventasResponse.data || [];
+      // } catch (error) {
+      //   console.warn("No se pudo obtener las ventas de la caja:", error);
+      // }
       
-      // Procesar movimientos: agrupar por tipo y subtipo
-      const movimientosAgrupados = new Map<string, { tipo: string; subtipo?: string; monto: number }>();
+      // Procesar movimientos: agrupar por tipo y subtipo (comentado para uso futuro)
+      // const movimientosAgrupados = new Map<string, { tipo: string; subtipo?: string; monto: number }>();
+      // 
+      // movimientosData.forEach((mov: any) => {
+      //   const tipoNombre = mov.tipo_movimiento_caja?.nombre || "Movimiento";
+      //   const montoNum = parseFloat(mov.monto);
+      //   
+      //   // Determinar si es ingreso o egreso basado en el signo del monto
+      //   const esIngreso = montoNum > 0;
+      //   const tipoBase = esIngreso ? "Ingreso" : "Egreso";
+      //   
+      //   // Extraer subtipo del nombre si existe (Mayor/Menor)
+      //   let subtipo: string | undefined;
+      //   const nombreLower = tipoNombre.toLowerCase();
+      //   if (nombreLower.includes("mayor")) {
+      //     subtipo = "Mayor";
+      //   } else if (nombreLower.includes("menor")) {
+      //     subtipo = "Menor";
+      //   }
+      //   
+      //   // Crear clave única para agrupar
+      //   const key = subtipo ? `${tipoBase} - ${subtipo}` : tipoBase;
+      //   
+      //   // Agregar o sumar al monto existente
+      //   const existing = movimientosAgrupados.get(key);
+      //   if (existing) {
+      //     existing.monto += Math.abs(montoNum); // Usar valor absoluto para agrupar
+      //   } else {
+      //     movimientosAgrupados.set(key, {
+      //       tipo: tipoBase,
+      //       subtipo,
+      //       monto: Math.abs(montoNum),
+      //     });
+      //   }
+      // });
       
-      movimientosData.forEach((mov: any) => {
-        const tipoNombre = mov.tipo_movimiento_caja?.nombre || "Movimiento";
-        const montoNum = parseFloat(mov.monto);
-        
-        // Determinar si es ingreso o egreso basado en el signo del monto
-        const esIngreso = montoNum > 0;
-        const tipoBase = esIngreso ? "Ingreso" : "Egreso";
-        
-        // Extraer subtipo del nombre si existe (Mayor/Menor)
-        let subtipo: string | undefined;
-        const nombreLower = tipoNombre.toLowerCase();
-        if (nombreLower.includes("mayor")) {
-          subtipo = "Mayor";
-        } else if (nombreLower.includes("menor")) {
-          subtipo = "Menor";
-        }
-        
-        // Crear clave única para agrupar
-        const key = subtipo ? `${tipoBase} - ${subtipo}` : tipoBase;
-        
-        // Agregar o sumar al monto existente
-        const existing = movimientosAgrupados.get(key);
-        if (existing) {
-          existing.monto += Math.abs(montoNum); // Usar valor absoluto para agrupar
-        } else {
-          movimientosAgrupados.set(key, {
-            tipo: tipoBase,
-            subtipo,
-            monto: Math.abs(montoNum),
-          });
-        }
-      });
+      // Calcular ingresos y egresos totales (comentado para uso futuro)
+      // const ingresos = movimientosData
+      //   .filter((m: any) => parseFloat(m.monto) > 0)
+      //   .reduce((sum: number, m: any) => sum + parseFloat(m.monto), 0);
+      // 
+      // const egresos = Math.abs(
+      //   movimientosData
+      //     .filter((m: any) => parseFloat(m.monto) < 0)
+      //     .reduce((sum: number, m: any) => sum + parseFloat(m.monto), 0)
+      // );
       
-      // Convertir a array
-      const movimientosResumen = Array.from(movimientosAgrupados.values());
+      // Calcular ventas en efectivo y balance por método de pago (comentado para uso futuro)
+      // const ventasEfectivo = ventasData
+      //   .filter((v: any) => v.medio_pago?.nombre?.toLowerCase().includes("efectivo"))
+      //   .reduce((sum: number, v: any) => sum + (parseFloat(v.total) || 0), 0);
       
-      // Calcular ingresos y egresos totales
-      const ingresos = movimientosData
-        .filter((m: any) => parseFloat(m.monto) > 0)
-        .reduce((sum: number, m: any) => sum + parseFloat(m.monto), 0);
+      // Agrupar ventas por método de pago (comentado para uso futuro)
+      // const balanceMetodosPagoMap = new Map<string, number>();
+      // ventasData.forEach((venta: any) => {
+      //   const metodoPago = venta.medio_pago?.nombre || "Sin método";
+      //   const total = parseFloat(venta.total) || 0;
+      //   const current = balanceMetodosPagoMap.get(metodoPago) || 0;
+      //   balanceMetodosPagoMap.set(metodoPago, current + total);
+      // });
       
-      const egresos = Math.abs(
-        movimientosData
-          .filter((m: any) => parseFloat(m.monto) < 0)
-          .reduce((sum: number, m: any) => sum + parseFloat(m.monto), 0)
-      );
-      
-      // Calcular ventas en efectivo y balance por método de pago
-      const ventasEfectivo = ventasData
-        .filter((v: any) => v.medio_pago?.nombre?.toLowerCase().includes("efectivo"))
-        .reduce((sum: number, v: any) => sum + (parseFloat(v.total) || 0), 0);
-      
-      // Agrupar ventas por método de pago
-      const balanceMetodosPagoMap = new Map<string, number>();
-      ventasData.forEach((venta: any) => {
-        const metodoPago = venta.medio_pago?.nombre || "Sin método";
-        const total = parseFloat(venta.total) || 0;
-        const current = balanceMetodosPagoMap.get(metodoPago) || 0;
-        balanceMetodosPagoMap.set(metodoPago, current + total);
-      });
-      
-      const balanceMetodosPago = Array.from(balanceMetodosPagoMap.entries()).map(([metodoPago, monto]) => ({
-        metodoPago,
-        monto,
-      }));
-      
-      // Calcular balance de efectivo
-      const balanceEfectivo = {
-        ingresos,
-        egresos,
-        ventasEfectivo,
-        total: ingresos - egresos + ventasEfectivo,
-      };
-      
-      // Obtener nombre del usuario que abrió la caja desde el localStorage (contexto de autenticación)
-      const usuarioApertura = user?.usuario || user?.email || "Usuario";
+      // Calcular balance de efectivo (comentado para uso futuro)
+      // const balanceMetodosPago = Array.from(balanceMetodosPagoMap.entries()).map(([metodoPago, monto]) => ({
+      //   metodoPago,
+      //   monto,
+      // }));
+      // const balanceEfectivo = {
+      //   ingresos,
+      //   egresos,
+      //   ventasEfectivo,
+      //   total: ingresos - egresos + ventasEfectivo,
+      // };
+      // const movimientosResumen = Array.from(movimientosAgrupados.values());
+      // const usuarioApertura = user?.usuario || user?.email || "Usuario";
       
       // const fechaCierre = new Date().toLocaleDateString("es-AR", {
       //   day: "2-digit",
