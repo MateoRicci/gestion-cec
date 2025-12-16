@@ -1,13 +1,21 @@
+export interface Permission {
+  id: number;
+  name: string;
+  guard_name: string;
+}
+
 export interface Role {
-  nombre: string;
+  id: number;
+  name: string;
+  guard_name: string;
+  permissions?: Permission[];
 }
 
 export interface User {
-  id: string;
-  personaId: string;
-  usuario: string;
+  id: number;
+  username: string;
   email: string;
-  usuarioPadreId: string | null;
-  estado: boolean;
+  nombre: string;
+  apellido: string;
   roles: Role[];
 }

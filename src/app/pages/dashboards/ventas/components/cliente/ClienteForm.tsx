@@ -92,8 +92,11 @@ export function ClienteForm({
                     `titular-${clienteData.titular.dni_titular}`
                   )}
                   onChange={() => {
+                    // Si el titular ya ingresó hoy, no permitir volver a marcarlo
+                    if (clienteData.titular.compro_hoy === true) return;
                     onToggleFamiliar(`titular-${clienteData.titular.dni_titular}`);
                   }}
+                  disabled={clienteData.titular.compro_hoy === true}
                 />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-gray-900 dark:text-dark-50">
@@ -143,8 +146,11 @@ export function ClienteForm({
                         `familiar-${familiar.dni_familiar}`
                       )}
                       onChange={() => {
+                        // Si el familiar ya ingresó hoy, no permitir volver a marcarlo
+                        if (familiar.compro_hoy === true) return;
                         onToggleFamiliar(`familiar-${familiar.dni_familiar}`);
                       }}
+                      disabled={familiar.compro_hoy === true}
                     />
                     <div className="flex-1">
                       <p className="text-sm font-medium text-gray-900 dark:text-dark-50">

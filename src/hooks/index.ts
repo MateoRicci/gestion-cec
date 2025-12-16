@@ -11,6 +11,7 @@ export * from "./useDocumentTitle";
 export * from "./useEventCallback";
 export * from "./useEventListener";
 export * from "./useFuse";
+export * from "./useFilteredNavigation";
 export * from "./useHighlight";
 export * from "./useHover";
 export * from "./useId";

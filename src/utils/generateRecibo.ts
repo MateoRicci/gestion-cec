@@ -346,6 +346,20 @@ export async function generateRecibo(data: ReciboData): Promise<void> {
   // Si el contenido excede el alto, jsPDF automáticamente agregará una nueva página
   // pero para ticketeras, queremos evitar eso, así que el cálculo inicial debería ser suficiente
 
-  // Abrir el PDF en una nueva pestaña en lugar de descargarlo
-  doc.output("dataurlnewwindow");
+  // Descargar el PDF con un nombre de archivo descriptivo
+  const fechaSafe = fecha.replace(/[^\d-]/g, "_");
+  const nro = numeroRecibo || "sin_numero";
+  const fileName = `entrada_${nro}_${fechaSafe}.pdf`;
+
+  const pdfBlob = doc.output("blob");
+  const blobUrl = URL.createObjectURL(pdfBlob);
+
+  const link = document.createElement("a");
+  link.href = blobUrl;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  URL.revokeObjectURL(blobUrl);
 }

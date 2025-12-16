@@ -5,7 +5,7 @@ import { useLocation } from "react-router";
 // Local Imports
 import { useBreakpointsContext } from "@/app/contexts/breakpoint/context";
 import { useSidebarContext } from "@/app/contexts/sidebar/context";
-import { navigation } from "@/app/navigation";
+import { useFilteredNavigation } from "@/app/navigation";
 import { useDidUpdate } from "@/hooks";
 import { isRouteActive } from "@/utils/isRouteActive";
 import { MainPanel } from "./MainPanel";
@@ -19,9 +19,10 @@ export function Sidebar() {
   const { pathname } = useLocation();
   const { name, lgAndDown } = useBreakpointsContext();
   const { isExpanded, close } = useSidebarContext();
+  const filteredNavigation = useFilteredNavigation();
 
   const initialSegment = useMemo(
-    () => navigation.find((item) => isRouteActive(item.path, pathname)),
+    () => filteredNavigation.find((item) => isRouteActive(item.path, pathname)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
@@ -31,16 +32,16 @@ export function Sidebar() {
   );
 
   const currentSegment = useMemo(() => {
-    return navigation.find((item) => item.path === activeSegmentPath);
-  }, [activeSegmentPath]);
+    return filteredNavigation.find((item) => item.path === activeSegmentPath);
+  }, [activeSegmentPath, filteredNavigation]);
 
   useDidUpdate(() => {
-    const activePath = navigation.find((item) =>
+    const activePath = filteredNavigation.find((item) =>
       isRouteActive(item.path, pathname),
     )?.path;
 
     setActiveSegmentPath(activePath);
-  }, [pathname]);
+  }, [pathname, filteredNavigation]);
 
   useDidUpdate(() => {
     if (lgAndDown && isExpanded) close();
@@ -49,7 +50,7 @@ export function Sidebar() {
   return (
     <>
       <MainPanel
-        nav={navigation}
+        nav={filteredNavigation}
         activeSegmentPath={activeSegmentPath}
         setActiveSegmentPath={setActiveSegmentPath}
       />

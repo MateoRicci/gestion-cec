@@ -225,7 +225,19 @@ export async function generateTicketCierre(data: TicketCierreData): Promise<void
   doc.setFont("helvetica", "italic");
   doc.text("Caja cerrada correctamente", pageWidth / 2, yPosition, { align: "center" });
 
-  // Abrir el PDF en una nueva pestaña
-  doc.output("dataurlnewwindow");
-}
+  // Descargar el PDF con un nombre de archivo descriptivo
+  const safeFecha = fechaCierre.replace(/[^\d-]/g, "_");
+  const fileName = `cierre_caja_${caja.id}_${safeFecha}.pdf`;
 
+  const pdfBlob = doc.output("blob");
+  const blobUrl = URL.createObjectURL(pdfBlob);
+
+  const link = document.createElement("a");
+  link.href = blobUrl;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  URL.revokeObjectURL(blobUrl);
+}

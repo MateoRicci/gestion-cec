@@ -351,11 +351,11 @@ export default function PuntosDeVentaConfig() {
         {/* Modal de crear/editar */}
         {showModal && (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
             onClick={handleCloseModal}
           >
             <Card
-              className="w-full max-w-md shadow-xl"
+              className="w-full max-w-md shadow-xl bg-white dark:bg-dark-900"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="p-6">

@@ -13,6 +13,10 @@ export interface VentaCajaResponse {
   deleted_at: string | null;
   total_detalles_convenio: number;
   total_detalles_sin_convenio: number;
+  estado: {
+    id: number;
+    nombre: string;
+  };
   cliente: {
     id: string;
     persona_id: string;
@@ -41,6 +45,7 @@ export interface VentaCaja {
   totalEntradas: number;
   convenioNombre: string;
   createdAt: string;
+  estadoNombre: string;
 }
 
 // Sistema de invalidación global para refrescar todos los hooks cuando hay un cambio
@@ -91,6 +96,7 @@ export function useVentasCaja(
         const montoTotal = parseFloat(v.monto_total);
         const totalEntradas = v.total_detalles_convenio + v.total_detalles_sin_convenio;
         const convenioNombre = v.cliente.persona.afiliado?.tipo_convenio?.nombre || "No Afiliado";
+        const estadoNombre = v.estado?.nombre || "";
 
         return {
           id: v.id,
@@ -100,6 +106,7 @@ export function useVentasCaja(
           totalEntradas,
           convenioNombre,
           createdAt: v.created_at,
+          estadoNombre,
         };
       });
 

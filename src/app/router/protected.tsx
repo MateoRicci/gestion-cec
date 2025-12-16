@@ -1,6 +1,7 @@
 import { Navigate, RouteObject } from "react-router";
 
 import AuthGuard from "@/middleware/AuthGuard";
+import RoleGuard from "@/middleware/RoleGuard";
 import { DynamicLayout } from "../layouts/DynamicLayout";
 import { AppLayout } from "../layouts/AppLayout";
 
@@ -37,18 +38,32 @@ const protectedRoutes: RouteObject = {
             },
             {
               path: "ventas",
-              lazy: async () => ({
-                Component: (await import("@/app/pages/dashboards/ventas"))
-                  .default,
-              }),
+              lazy: async () => {
+                const VentasPage = (await import("@/app/pages/dashboards/ventas"))
+                  .default;
+                return {
+                  Component: () => (
+                    <RoleGuard requiredModule="dashboards.ventas">
+                      <VentasPage />
+                    </RoleGuard>
+                  ),
+                };
+              },
             },
             {
               path: "configuraciones",
-              lazy: async () => ({
-                Component: (
+              lazy: async () => {
+                const ConfiguracionesPage = (
                   await import("@/app/pages/dashboards/configuraciones")
-                ).default,
-              }),
+                ).default;
+                return {
+                  Component: () => (
+                    <RoleGuard requiredModule="dashboards.configuraciones">
+                      <ConfiguracionesPage />
+                    </RoleGuard>
+                  ),
+                };
+              },
               children: [
                 {
                   index: true,
@@ -70,6 +85,16 @@ const protectedRoutes: RouteObject = {
                     Component: (
                       await import(
                         "@/app/pages/dashboards/configuraciones/productos"
+                      )
+                    ).default,
+                  }),
+                },
+                {
+                  path: "empleados",
+                  lazy: async () => ({
+                    Component: (
+                      await import(
+                        "@/app/pages/dashboards/configuraciones/empleados"
                       )
                     ).default,
                   }),

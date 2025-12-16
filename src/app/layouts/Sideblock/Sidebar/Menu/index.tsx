@@ -5,7 +5,7 @@ import SimpleBar from "simplebar-react";
 
 // Local Imports
 import { useDidUpdate } from "@/hooks";
-import { navigation } from "@/app/navigation";
+import { useFilteredNavigation } from "@/app/navigation";
 import { Accordion } from "@/components/ui";
 import { isRouteActive } from "@/utils/isRouteActive";
 import { Group } from "./Group";
@@ -15,8 +15,9 @@ import { Group } from "./Group";
 export function Menu() {
   const { pathname } = useLocation();
   const ref = useRef<HTMLDivElement | null>(null);
+  const filteredNavigation = useFilteredNavigation();
 
-  const activeGroup = navigation.find((item) => {
+  const activeGroup = filteredNavigation.find((item) => {
     if (item.path) return isRouteActive(item.path, pathname);
   });
 
@@ -44,7 +45,7 @@ export function Menu() {
       className="h-full overflow-x-hidden pb-6"
     >
       <Accordion value={expanded} onChange={setExpanded} className="space-y-1">
-        {navigation.map((nav) => (
+        {filteredNavigation.map((nav) => (
           <Group key={nav.id} data={nav} />
         ))}
       </Accordion>

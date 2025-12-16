@@ -17,7 +17,7 @@ import { useAuthContext } from "@/app/contexts/auth/context";
 
 export function Profile() {
   const { logout, user } = useAuthContext();
-  const username = user?.usuario || "Usuario";
+  const username = user?.username || user?.nombre || "Usuario";
 
   return (
     <Popover className="relative">
@@ -59,7 +59,7 @@ export function Profile() {
                     {username}
                   </div>
                   <p className="mt-0.5 text-xs text-gray-400 dark:text-dark-300">
-                    {user?.email || user?.roles?.[0]?.nombre || "Usuario"}
+                    {user?.email || user?.roles?.[0]?.name || "Usuario"}
                   </p>
                 </div>
               </div>

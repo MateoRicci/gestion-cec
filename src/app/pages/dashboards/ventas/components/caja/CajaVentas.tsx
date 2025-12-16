@@ -30,12 +30,27 @@ function formatDate(dateString: string): string {
   return dateFormatter.format(new Date(dateString));
 }
 
-function VentaItemBase({ venta }: { venta: VentaCaja }) {
+interface VentaItemProps {
+  venta: VentaCaja;
+  onAnular: () => void;
+}
+
+function VentaItemBase({ venta, onAnular }: VentaItemProps) {
+  const isCancelada = venta.estadoNombre === "Cancelada";
+
   return (
-    <div className="grid grid-cols-12 gap-4 border-b border-gray-700/50 py-3 last:border-b-0 items-center">
+    <div
+      className={`grid grid-cols-12 items-center gap-4 border-b border-gray-700/50 py-3 last:border-b-0 ${
+        isCancelada ? "opacity-60" : ""
+      }`}
+    >
       {/* Monto */}
       <div className="col-span-2">
-        <span className="text-sm font-semibold text-emerald-400 whitespace-nowrap">
+        <span
+          className={`text-sm font-semibold whitespace-nowrap ${
+            isCancelada ? "text-gray-500" : "text-emerald-400"
+          }`}
+        >
           $ {formatCurrency(venta.montoTotal)}
         </span>
       </div>
@@ -55,7 +70,7 @@ function VentaItemBase({ venta }: { venta: VentaCaja }) {
       </div>
 
       {/* Convenio */}
-      <div className="col-span-3">
+      <div className="col-span-2">
         <span
           className={`text-xs px-2 py-0.5 rounded whitespace-nowrap inline-block ${
             venta.convenioNombre === "No Afiliado"
@@ -72,6 +87,22 @@ function VentaItemBase({ venta }: { venta: VentaCaja }) {
         <p className="text-xs text-gray-500 whitespace-nowrap">
           {formatDate(venta.createdAt)}
         </p>
+      </div>
+
+      {/* Acción */}
+      <div className="col-span-1 flex justify-end">
+        <button
+          type="button"
+          onClick={onAnular}
+          disabled={isCancelada}
+          className={`rounded px-2 py-1 text-xs ${
+            isCancelada
+              ? "border border-gray-600 text-gray-500 cursor-not-allowed bg-gray-800/40"
+              : "border border-red-500 text-red-400 hover:bg-red-500/10"
+          }`}
+        >
+          {isCancelada ? "Anulada" : "Anular venta"}
+        </button>
       </div>
     </div>
   );
@@ -157,20 +188,16 @@ export function CajaVentas({ cajaId }: CajaVentasProps) {
       ) : (
         <div className="space-y-1">
           {ventas.map((venta) => (
-            <div key={venta.id} className="flex items-center justify-between">
-              <VentaItem venta={venta} />
-              <button
-                type="button"
-                onClick={() => {
-                  setVentaSeleccionada(venta);
-                  setConfirmState("pending");
-                  setShowConfirm(true);
-                }}
-                className="ml-3 rounded border border-red-500 px-2 py-1 text-xs text-red-400 hover:bg-red-500/10"
-              >
-                Anular venta
-              </button>
-            </div>
+            <VentaItem
+              key={venta.id}
+              venta={venta}
+              onAnular={() => {
+                if (venta.estadoNombre === "Cancelada") return;
+                setVentaSeleccionada(venta);
+                setConfirmState("pending");
+                setShowConfirm(true);
+              }}
+            />
           ))}
         </div>
       )}

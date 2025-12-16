@@ -51,21 +51,35 @@ export function useCliente() {
       setClienteData(clienteDataMapped);
 
       // Marcar el DNI buscado por defecto
+      // Importante: NO auto-seleccionar personas que ya ingresaron hoy (compro_hoy === true)
       const seleccionados = new Set<string>();
-      if (dniBuscado === clienteDataMapped.titular.dni_titular) {
+
+      // Titular: solo si coincide el DNI buscado y NO tiene compro_hoy
+      if (
+        dniBuscado === clienteDataMapped.titular.dni_titular &&
+        clienteDataMapped.titular.compro_hoy !== true
+      ) {
         seleccionados.add(`titular-${clienteDataMapped.titular.dni_titular}`);
       }
 
+      // Familiares: solo si coincide el DNI buscado y NO tienen compro_hoy
       if (clienteDataMapped.familiares) {
         clienteDataMapped.familiares.forEach((familiar) => {
-          if (dniBuscado === familiar.dni_familiar) {
+          if (
+            dniBuscado === familiar.dni_familiar &&
+            familiar.compro_hoy !== true
+          ) {
             seleccionados.add(`familiar-${familiar.dni_familiar}`);
           }
         });
       }
 
       // Si no se encontró el DNI buscado, marcar el titular por defecto
-      if (seleccionados.size === 0) {
+      // siempre y cuando NO haya ingresado hoy.
+      if (
+        seleccionados.size === 0 &&
+        clienteDataMapped.titular.compro_hoy !== true
+      ) {
         seleccionados.add(`titular-${clienteDataMapped.titular.dni_titular}`);
       }
 

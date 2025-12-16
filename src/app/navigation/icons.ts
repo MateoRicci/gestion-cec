@@ -1,4 +1,12 @@
-import { TbPalette, TbSettings, TbBuildingStore, TbPackage, TbShoppingCart, TbHome } from "react-icons/tb";
+import {
+  TbPalette,
+  TbSettings,
+  TbBuildingStore,
+  TbPackage,
+  TbShoppingCart,
+  TbHome,
+  TbUsers,
+} from "react-icons/tb";
 import { UserIcon as HiUserIcon } from "@heroicons/react/24/outline";
 import { ElementType } from "react";
 
@@ -12,6 +20,7 @@ export const navigationIcons: Record<string, ElementType> = {
   "dashboards.configuraciones": TbSettings,
   "dashboards.configuraciones.puntosVenta": TbBuildingStore,
   "dashboards.configuraciones.productos": TbPackage,
+  "dashboards.configuraciones.empleados": TbUsers,
   "settings.general": HiUserIcon,
   "settings.appearance": TbPalette,
 };

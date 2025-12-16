@@ -356,7 +356,7 @@ export function VentasSection({ currentPv }: VentasSectionProps) {
       {/* Modal de Ventas */}
       {showVentasModal && cajaId && (
         <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-4xl rounded-lg border border-gray-700 bg-gray-900 p-5 text-gray-100 shadow-xl">
+          <div className="w-full max-w-5xl rounded-lg border border-gray-700 bg-gray-900 p-6 text-gray-100 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold">Ventas de caja</h3>
               <button
@@ -373,8 +373,9 @@ export function VentasSection({ currentPv }: VentasSectionProps) {
               <div className="col-span-2">Monto</div>
               <div className="col-span-3">Cliente</div>
               <div className="col-span-2">Entradas</div>
-              <div className="col-span-3">Convenio</div>
+              <div className="col-span-2">Convenio</div>
               <div className="col-span-2">Fecha</div>
+              <div className="col-span-1 text-right">Acción</div>
             </div>
 
             <CajaVentas cajaId={cajaId} />
