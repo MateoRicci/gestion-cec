@@ -40,7 +40,6 @@ export function Header() {
                   >
                     <div className="flex items-center gap-2">
                       <MagnifyingGlassIcon className="size-5" />
-                      <span>Search here...</span>
                     </div>
                     <svg
                       xmlns="http://www.w3.org/2000/svg"

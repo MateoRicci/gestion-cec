@@ -188,7 +188,7 @@ export function SearchDialog({ close }: SearchDialogProps) {
         <div className="flex items-center justify-between pr-4 pl-2 rtl:pr-2 rtl:pl-4">
           <Input
             id={searchInputId}
-            placeholder="Search here..."
+            placeholder=""
             value={query}
             data-search-item
             onChange={(event: React.ChangeEvent<HTMLInputElement>) =>

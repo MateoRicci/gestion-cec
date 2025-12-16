@@ -18,6 +18,12 @@ interface BalanceMetodoPago {
   monto: number;
 }
 
+interface ResumenConvenio {
+  convenio: string;
+  cantidad: number;
+  monto: number;
+}
+
 interface TicketCierreData {
   caja: CajaInfo;
   movimientos: MovimientoResumen[];
@@ -28,11 +34,12 @@ interface TicketCierreData {
     total: number;
   };
   balanceMetodosPago: BalanceMetodoPago[];
+  resumenConvenios: ResumenConvenio[];
   fechaCierre: string;
 }
 
 export async function generateTicketCierre(data: TicketCierreData): Promise<void> {
-  const { caja, movimientos, balanceEfectivo, balanceMetodosPago, fechaCierre } = data;
+  const { caja, balanceEfectivo, balanceMetodosPago, resumenConvenios, fechaCierre } = data;
 
   // Calcular el alto necesario aproximado antes de crear el PDF
   const pageWidth = 79; // Ancho ticketera en mm
@@ -45,14 +52,14 @@ export async function generateTicketCierre(data: TicketCierreData): Promise<void
   // Encabezado (título, caja info)
   estimatedHeight += 4 + 6 + 10 + 4 + 4 + 4 + 4; // ~36mm
   
-  // Movimientos (cada movimiento ~5mm)
-  estimatedHeight += 4 + (movimientos.length * 5) + 4;
-  
   // Balance efectivo
   estimatedHeight += 4 + 15 + 4;
   
   // Balance métodos de pago
   estimatedHeight += 4 + (balanceMetodosPago.length * 4) + 4;
+  
+  // Resumen convenios
+  estimatedHeight += 4 + (resumenConvenios.length * 4) + 4;
   
   // Cierre final
   estimatedHeight += 4 + 10 + 5;
@@ -85,59 +92,26 @@ export async function generateTicketCierre(data: TicketCierreData): Promise<void
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(0, 0, 0);
-  doc.text("CIERRE DE CAJA", pageWidth / 2, yPosition, { align: "center" });
+  doc.text(`CIERRE DE CAJA N° ${caja.id}`, pageWidth / 2, yPosition, { align: "center" });
   yPosition += 6;
 
   // Información de la caja
   doc.setFontSize(7);
-  doc.setFont("helvetica", "normal");
-  doc.text(`Caja: ${caja.nombre}`, marginLeft, yPosition, { align: "left" });
-  yPosition += 4;
-  
-  if (caja.descripcion) {
-    const descripcionLines = doc.splitTextToSize(caja.descripcion, contentWidth);
-    doc.text(descripcionLines, marginLeft, yPosition, { align: "left" });
-    yPosition += descripcionLines.length * 3;
-  }
-  
-  doc.text(`Usuario: ${caja.usuarioApertura}`, marginLeft, yPosition, { align: "left" });
-  yPosition += 4;
-  
   doc.text(`Fecha: ${fechaCierre}`, marginLeft, yPosition, { align: "left" });
   yPosition += 6;
-
-  // Línea separadora
-  doc.setDrawColor(200, 200, 200);
-  doc.setLineWidth(0.3);
-  doc.line(marginLeft, yPosition, marginLeft + contentWidth, yPosition);
-  yPosition += 4;
-
-  // Sección de Movimientos
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "bold");
-  doc.text("MOVIMIENTOS", marginLeft, yPosition, { align: "left" });
   doc.setFont("helvetica", "normal");
+  doc.text(`Punto de venta: ${caja.nombre}`, marginLeft, yPosition, { align: "left" });
   yPosition += 4;
-
-  // Agrupar movimientos por tipo y subtipo
-  const movimientosAgrupados = new Map<string, number>();
-  movimientos.forEach((mov) => {
-    const key = mov.subtipo ? `${mov.tipo} - ${mov.subtipo}` : mov.tipo;
-    const current = movimientosAgrupados.get(key) || 0;
-    movimientosAgrupados.set(key, current + mov.monto);
-  });
-
-  movimientosAgrupados.forEach((monto, tipo) => {
-    doc.setFontSize(7);
-    const montoFormateado = Math.round(monto).toLocaleString('es-AR', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    });
-    doc.text(`${tipo}: $${montoFormateado}`, marginLeft, yPosition, { align: "left" });
-    yPosition += 4;
-  });
-
-  yPosition += 3;
+  
+  // if (caja.descripcion) {
+  //   const descripcionLines = doc.splitTextToSize(caja.descripcion, contentWidth);
+  //   doc.text(descripcionLines, marginLeft, yPosition, { align: "left" });
+  //   yPosition += descripcionLines.length * 3;
+  // }
+  
+  doc.text(`Usuario caja: ${caja.usuarioApertura}`, marginLeft, yPosition, { align: "left" });
+  yPosition += 4;
+  
 
   // Línea separadora
   doc.setDrawColor(200, 200, 200);
@@ -148,7 +122,7 @@ export async function generateTicketCierre(data: TicketCierreData): Promise<void
   // Balance de Efectivo
   doc.setFontSize(7);
   doc.setFont("helvetica", "bold");
-  doc.text("BALANCE EFECTIVO", marginLeft, yPosition, { align: "left" });
+  doc.text("MOVIMIENTOS EN EFECTIVO", marginLeft, yPosition, { align: "left" });
   doc.setFont("helvetica", "normal");
   yPosition += 4;
 
@@ -169,15 +143,15 @@ export async function generateTicketCierre(data: TicketCierreData): Promise<void
     maximumFractionDigits: 0
   });
 
-  doc.text(`Ingresos: $${ingresosFormateado}`, marginLeft, yPosition, { align: "left" });
+  doc.text(`Ingresos Manuales: $${ingresosFormateado}`, marginLeft, yPosition, { align: "left" });
+  yPosition += 3;
+  doc.text(`Ventas: $${ventasEfectivoFormateado}`, marginLeft, yPosition, { align: "left" });
   yPosition += 3;
   doc.text(`Egresos: $${egresosFormateado}`, marginLeft, yPosition, { align: "left" });
   yPosition += 3;
-  doc.text(`Ventas Efectivo: $${ventasEfectivoFormateado}`, marginLeft, yPosition, { align: "left" });
-  yPosition += 3;
   
   doc.setFont("helvetica", "bold");
-  doc.text(`Total Efectivo: $${totalEfectivoFormateado}`, marginLeft, yPosition, { align: "left" });
+  doc.text(`Saldo Efectivo: $${totalEfectivoFormateado}`, marginLeft, yPosition, { align: "left" });
   doc.setFont("helvetica", "normal");
   yPosition += 6;
 
@@ -187,10 +161,10 @@ export async function generateTicketCierre(data: TicketCierreData): Promise<void
   doc.line(marginLeft, yPosition, marginLeft + contentWidth, yPosition);
   yPosition += 4;
 
-  // Balance por Método de Pago
+  // Entradas por Método de Pago
   doc.setFontSize(7);
   doc.setFont("helvetica", "bold");
-  doc.text("BALANCE POR MÉTODO", marginLeft, yPosition, { align: "left" });
+  doc.text("ENTRADAS POR MÉTODO DE PAGO", marginLeft, yPosition, { align: "left" });
   doc.setFont("helvetica", "normal");
   yPosition += 4;
 
@@ -202,6 +176,30 @@ export async function generateTicketCierre(data: TicketCierreData): Promise<void
     doc.text(`${balance.metodoPago}: $${montoFormateado}`, marginLeft, yPosition, { align: "left" });
     yPosition += 3;
   });
+
+  yPosition += 3;
+
+  // Línea separadora
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineWidth(0.3);
+  doc.line(marginLeft, yPosition, marginLeft + contentWidth, yPosition);
+  yPosition += 4;
+
+  // Resumen por Convenio
+  // doc.setFontSize(7);
+  // doc.setFont("helvetica", "bold");
+  // doc.text("ENTRADAS POR CONVENIO", marginLeft, yPosition, { align: "left" });
+  // doc.setFont("helvetica", "normal");
+  // yPosition += 4;
+
+  // resumenConvenios.forEach((convenio) => {
+  //   const montoFormateado = Math.round(convenio.monto).toLocaleString('es-AR', {
+  //     minimumFractionDigits: 0,
+  //     maximumFractionDigits: 0
+  //   });
+  //   doc.text(`${convenio.convenio}: ${convenio.cantidad} entradas - $${montoFormateado}`, marginLeft, yPosition, { align: "left" });
+  //   yPosition += 3;
+  // });
 
   yPosition += 3;
 

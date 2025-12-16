@@ -67,13 +67,13 @@ export function ProductoPreciosModal({
         `/api/productos/${producto.id}/precios`
       );
       
-      // Buscar la lista de precios de "no socios" (case insensitive)
+      // Buscar la lista de precios de "no afiliados" (case insensitive)
       const precioNoSocioEncontrado = response.data.precios.find((precio) =>
-        precio.nombre_lista.toLowerCase().includes("no socio")
+        precio.nombre_lista.toLowerCase().includes("no afiliado")
       );
 
       if (!precioNoSocioEncontrado) {
-        setError("No se encontró la lista de precios de 'No Socios' para este producto");
+        setError("No se encontró la lista de precios de 'No Afiliados' para este producto");
         setPrecioNoSocio(null);
       } else {
         setPrecioNoSocio(precioNoSocioEncontrado);
@@ -179,7 +179,7 @@ export function ProductoPreciosModal({
             ) : !precioNoSocio ? (
               <div className="rounded-lg border border-gray-200 bg-white p-8 text-center dark:border-dark-600 dark:bg-dark-800">
                 <p className="text-gray-500 dark:text-dark-400">
-                  No hay precio de "No Socios" disponible para este producto
+                  No hay precio de "No Afiliados" disponible para este producto
                 </p>
               </div>
             ) : (

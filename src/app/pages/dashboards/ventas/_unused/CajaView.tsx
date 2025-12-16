@@ -1,21 +1,26 @@
+/**
+ * @deprecated Este componente no se está utilizando actualmente.
+ * Se mantiene aquí por si se necesita en el futuro para una vista dedicada de caja.
+ * 
+ * La funcionalidad de caja está integrada en PuntoDeVentaView a través de CajaSection.
+ */
 import { useVentasContext } from "@/app/contexts/ventas/context";
 import { useAuthContext } from "@/app/contexts/auth/context";
 import { ConfirmModal } from "@/components/shared/ConfirmModal";
-import { useCajaActions } from "./hooks/useCajaActions";
-import { useMovimientos } from "./hooks/useMovimientos";
-import { invalidateMovimientosCaja } from "./hooks/useMovimientosCaja";
-import { CajaHeader } from "./components/CajaHeader";
-import { CajaEstado } from "./components/CajaEstado";
-import { CajaControls } from "./components/CajaControls";
-import { CajaResumen } from "./components/CajaResumen";
-import { CajaMovimientos } from "./components/CajaMovimientos";
-import { MovimientoModal } from "./components/MovimientoModal";
+import { useCajaActions } from "../hooks/useCajaActions";
+import { useMovimientos } from "../hooks/useMovimientos";
+import { invalidateMovimientosCaja } from "../hooks/useMovimientosCaja";
+// import { CajaHeader } from "../components/caja/CajaHeader"; // Componente no existe
+import { CajaEstado } from "../components/caja/CajaEstado";
+import { CajaControls } from "../components/caja/CajaControls";
+import { CajaResumen } from "../components/caja/CajaResumen";
+import { CajaMovimientos } from "../components/caja/CajaMovimientos";
+import { MovimientoModal } from "../components/caja/MovimientoModal";
 
 export function CajaView() {
   const {
     puntosDeVenta,
     selectedPuntoDeVentaId,
-    setSelectedPuntoDeVentaId,
     cajaAbierta,
     isLoadingCaja,
     getCajaId,
@@ -79,11 +84,12 @@ export function CajaView() {
         <div className="flex justify-between gap-10">
           {/* Columna izquierda: controles de caja */}
           <div className="flex-1">
-            <CajaHeader
+            {/* CajaHeader removido - componente no existe */}
+            {/* <CajaHeader
               puntosDeVenta={puntosDeVenta}
               selectedPuntoDeVentaId={selectedPuntoDeVentaId}
               onPuntoDeVentaChange={setSelectedPuntoDeVentaId}
-            />
+            /> */}
 
             {isLoadingCaja ? (
               <div className="mt-6 flex items-center gap-2 text-sm text-gray-500 dark:text-dark-200">
@@ -141,3 +147,4 @@ export function CajaView() {
     </section>
   );
 }
+

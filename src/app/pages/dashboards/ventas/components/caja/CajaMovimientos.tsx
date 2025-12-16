@@ -1,30 +1,39 @@
-import { useMovimientosCaja, MovimientoCaja } from "../hooks/useMovimientosCaja";
+import { memo } from "react";
+import {
+  useMovimientosCaja,
+  MovimientoCaja,
+} from "../../hooks/useMovimientosCaja";
 
 interface CajaMovimientosProps {
   cajaId: number | null;
 }
 
+// Crear formatters una sola vez, fuera del render (mucho más performante)
+const currencyFormatter = new Intl.NumberFormat("es-ES", {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
+
+const dateFormatter = new Intl.DateTimeFormat("es-ES", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
 function formatCurrency(amount: number): string {
-  // Formatear sin decimales, solo con separadores de miles
-  return new Intl.NumberFormat("es-ES", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
+  return currencyFormatter.format(amount);
 }
 
 function formatDate(dateString: string): string {
   const date = new Date(dateString);
-  return new Intl.DateTimeFormat("es-ES", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
+  return dateFormatter.format(date);
 }
 
-function MovimientoItem({ movimiento }: { movimiento: MovimientoCaja }) {
-  const isPositivo = movimiento.monto > 0;
+function MovimientoItemBase({ movimiento }: { movimiento: MovimientoCaja }) {
+  // Considerar 0 como positivo (caso de afiliados), solo rojo cuando es estrictamente menor a 0
+  const isPositivo = movimiento.monto >= 0;
   const montoAbsoluto = Math.abs(movimiento.monto);
   const colorClass = isPositivo ? "text-emerald-400" : "text-red-400";
   const icon = isPositivo ? "+" : "-";
@@ -65,6 +74,9 @@ function MovimientoItem({ movimiento }: { movimiento: MovimientoCaja }) {
     </div>
   );
 }
+
+// Memoizar cada fila para evitar re-renders al hacer scroll
+const MovimientoItem = memo(MovimientoItemBase);
 
 export function CajaMovimientos({ cajaId }: CajaMovimientosProps) {
   const { movimientos, loading } = useMovimientosCaja(cajaId);

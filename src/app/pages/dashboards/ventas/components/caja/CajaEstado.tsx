@@ -1,4 +1,4 @@
-import { useMovimientosCaja } from "../hooks/useMovimientosCaja";
+import { useMovimientosCaja } from "../../hooks/useMovimientosCaja";
 
 interface CajaEstadoProps {
   cajaAbierta: boolean;

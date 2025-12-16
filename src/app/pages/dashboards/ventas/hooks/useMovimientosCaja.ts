@@ -13,6 +13,15 @@ export interface MovimientoCajaResponse {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  // Relación opcional con el tipo de movimiento, cuando el backend lo incluye
+  tipo_movimiento_caja?: {
+    id: number;
+    nombre: string;
+    descripcion: string | null;
+    created_at: string;
+    updated_at: string;
+    deleted_at: string | null;
+  } | null;
 }
 
 export interface MovimientoCaja {
@@ -69,15 +78,18 @@ export function useMovimientosCaja(
         `/api/cajas/${cajaId}/movimientos`
       );
 
-      // Procesar movimientos: solo extraer el monto (convertir de string a number)
+      // Procesar movimientos: convertir monto a number y mapear campos útiles
       const processedMovimientos: MovimientoCaja[] = response.data.map((m) => {
         const montoNum = parseFloat(m.monto); // Convertir de string a number
-        
+        const tipoNombre =
+          m.tipo_movimiento_caja?.nombre ??
+          ""; // En tu ejemplo viene en tipo_movimiento_caja.nombre
+
         return {
           id: m.id,
           monto: montoNum, // Los egresos vienen negativos, los ingresos positivos
           tipoMovimientoCajaId: m.tipo_movimiento_caja_id,
-          tipoMovimientoNombre: "", // Ya no se usa, pero mantenemos la estructura
+          tipoMovimientoNombre: tipoNombre,
           descripcion: m.descripcion || "",
           cajaId: m.caja_id,
           usuarioId: m.usuario_id.toString(),

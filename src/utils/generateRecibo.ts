@@ -16,7 +16,7 @@ interface DetalleItem {
   precio: number;
   subtotal: number;
   nombreLista?: string;
-  afiliadoId?: string | null; // id_afiliado si es entrada de socio, null si es extra/no socio
+  afiliadoId?: string | null; // id_afiliado si es entrada de afiliado, null si es extra/no afiliado
 }
 
 interface PuntoDeVenta {
@@ -67,9 +67,9 @@ export async function generateRecibo(data: ReciboData): Promise<void> {
     // Considerar que el nombre puede modificarse (agregar "No Afiliado")
     let nombreProducto = item.productoNombre;
     const esEntrada = nombreProducto.toLowerCase().includes("entrada");
-    const nombreListaEsNoSocio = item.nombreLista?.toLowerCase().includes("no socio");
+    const nombreListaEsNoAfiliado = item.nombreLista?.toLowerCase().includes("no afiliado");
     const esEntradaManual = esEntrada && (item.afiliadoId === null || item.afiliadoId === undefined);
-    if (nombreListaEsNoSocio || (esEntradaManual && !nombreProducto.toLowerCase().includes("afiliado") && !nombreProducto.toLowerCase().includes("socio"))) {
+    if (nombreListaEsNoAfiliado || (esEntradaManual && !nombreProducto.toLowerCase().includes("afiliado") && !nombreProducto.toLowerCase().includes("socio"))) {
       nombreProducto = nombreProducto + " No Afiliado"; // Estimación del nombre final
     }
     const productoLines = Math.ceil(nombreProducto.length / 25);
@@ -233,14 +233,13 @@ export async function generateRecibo(data: ReciboData): Promise<void> {
     
     // Determinar si es una entrada "no afiliado"
     // Es "no afiliado" si:
-    // 1. El nombreLista contiene "no socio" o "no afiliado"
+    // 1. El nombreLista contiene "no afiliado"
     // 2. O es una entrada (nombre contiene "entrada") y afiliadoId es null (agregada manualmente)
     // IMPORTANTE: NO es "no afiliado" si ya tiene "Afiliado Mayor" o "Afiliado Menor"
     const esEntrada = nombreProducto.toLowerCase().includes("entrada");
-    const nombreListaEsNoSocio = item.nombreLista?.toLowerCase().includes("no socio");
     const nombreListaEsNoAfiliado = item.nombreLista?.toLowerCase().includes("no afiliado");
     const esEntradaManual = esEntrada && (item.afiliadoId === null || item.afiliadoId === undefined);
-    const esNoAfiliado = (nombreListaEsNoSocio || nombreListaEsNoAfiliado || (esEntradaManual && !yaTieneNoAfiliado)) && !tieneAfiliadoMayorOMenor;
+    const esNoAfiliado = (nombreListaEsNoAfiliado || (esEntradaManual && !yaTieneNoAfiliado)) && !tieneAfiliadoMayorOMenor;
     
     // Si es una entrada "no afiliado" y no lo indica en el nombre, agregarlo
     // PERO solo si NO es una entrada de afiliado con Mayor o Menor

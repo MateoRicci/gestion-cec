@@ -1,4 +1,4 @@
-import { useMovimientosCaja } from "../hooks/useMovimientosCaja";
+import { useMovimientosCaja } from "../../hooks/useMovimientosCaja";
 
 interface CajaResumenProps {
   cajaId: number | null;

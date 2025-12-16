@@ -1,5 +1,5 @@
 import { Button, Input, Textarea, GhostSpinner } from "@/components/ui";
-import { MovimientoTipo } from "../hooks/useMovimientos";
+import { MovimientoTipo } from "../../hooks/useMovimientos";
 import { PuntoDeVenta } from "@/app/contexts/ventas/context";
 
 interface MovimientoModalProps {
