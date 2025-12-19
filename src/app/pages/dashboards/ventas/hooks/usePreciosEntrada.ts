@@ -37,13 +37,11 @@ export function usePreciosEntrada() {
   }, []);
 
   const setProductoEntradaMayorId = useCallback((id: number) => {
-    // setPrecios((prev) => ({ ...prev, productoEntradaMayorId: id || PRODUCTO_ENTRADA_MAYOR_ID }));
-    setPrecios((prev) => ({ ...prev, productoEntradaMayorId: PRODUCTO_ENTRADA_MAYOR_ID }));
+    setPrecios((prev) => ({ ...prev, productoEntradaMayorId: id || PRODUCTO_ENTRADA_MAYOR_ID }));
   }, []);
 
   const setProductoEntradaMenorId = useCallback((id: number) => {
-    // setPrecios((prev) => ({ ...prev, productoEntradaMenorId: id || PRODUCTO_ENTRADA_MENOR_ID }));
-    setPrecios((prev) => ({ ...prev, productoEntradaMenorId: PRODUCTO_ENTRADA_MENOR_ID }));
+    setPrecios((prev) => ({ ...prev, productoEntradaMenorId: id || PRODUCTO_ENTRADA_MENOR_ID }));
   }, []);
 
   const loadPrecioNoSocio = useCallback(async (productoId: number) => {
