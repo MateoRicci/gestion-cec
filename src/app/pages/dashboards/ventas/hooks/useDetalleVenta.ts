@@ -140,7 +140,7 @@ export function useDetalleVenta(
               nombreLista = "Entrada Afiliado Mayor";
               productoNombre = `Entrada Afiliado Mayor ${persona.nombre}`;
             } else {
-              productoId = precios.productoEntradaMenorId || 0;
+              productoId = precios.productoEntradaMenorId || 1;
               precio = precios.precioEntradaMenor || 0;
               nombreLista = "Entrada Afiliado Menor";
               productoNombre = `Entrada Afiliado Menor ${persona.nombre}`;

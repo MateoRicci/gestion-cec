@@ -8,11 +8,14 @@ import {
 } from "../services/preciosEntradaService";
 import { ClienteData } from "../types";
 
+const PRODUCTO_ENTRADA_MAYOR_ID = 1;
+const PRODUCTO_ENTRADA_MENOR_ID = 2;
+
 export interface PreciosEntradaState {
   precioEntradaNoSocio: number | null;
   productoEntradaId: number | null;
-  productoEntradaMayorId: number | null;
-  productoEntradaMenorId: number | null;
+  productoEntradaMayorId: number | 1;
+  productoEntradaMenorId: number | 2;
   precioEntradaMayor: number | null;
   precioEntradaMenor: number | null;
   listaPrecioIdSocio: number;
@@ -22,8 +25,8 @@ export function usePreciosEntrada() {
   const [precios, setPrecios] = useState<PreciosEntradaState>({
     precioEntradaNoSocio: null,
     productoEntradaId: null,
-    productoEntradaMayorId: null,
-    productoEntradaMenorId: null,
+    productoEntradaMayorId: PRODUCTO_ENTRADA_MAYOR_ID,
+    productoEntradaMenorId: PRODUCTO_ENTRADA_MENOR_ID,
     precioEntradaMayor: null,
     precioEntradaMenor: null,
     listaPrecioIdSocio: 1,
@@ -33,12 +36,14 @@ export function usePreciosEntrada() {
     setPrecios((prev) => ({ ...prev, productoEntradaId: id }));
   }, []);
 
-  const setProductoEntradaMayorId = useCallback((id: number | null) => {
-    setPrecios((prev) => ({ ...prev, productoEntradaMayorId: id }));
+  const setProductoEntradaMayorId = useCallback((id: number) => {
+    // setPrecios((prev) => ({ ...prev, productoEntradaMayorId: id || PRODUCTO_ENTRADA_MAYOR_ID }));
+    setPrecios((prev) => ({ ...prev, productoEntradaMayorId: PRODUCTO_ENTRADA_MAYOR_ID }));
   }, []);
 
-  const setProductoEntradaMenorId = useCallback((id: number | null) => {
-    setPrecios((prev) => ({ ...prev, productoEntradaMenorId: id }));
+  const setProductoEntradaMenorId = useCallback((id: number) => {
+    // setPrecios((prev) => ({ ...prev, productoEntradaMenorId: id || PRODUCTO_ENTRADA_MENOR_ID }));
+    setPrecios((prev) => ({ ...prev, productoEntradaMenorId: PRODUCTO_ENTRADA_MENOR_ID }));
   }, []);
 
   const loadPrecioNoSocio = useCallback(async (productoId: number) => {
@@ -111,8 +116,8 @@ export function usePreciosEntrada() {
     setPrecios({
       precioEntradaNoSocio: null,
       productoEntradaId: null,
-      productoEntradaMayorId: null,
-      productoEntradaMenorId: null,
+      productoEntradaMayorId: PRODUCTO_ENTRADA_MAYOR_ID,
+      productoEntradaMenorId: PRODUCTO_ENTRADA_MENOR_ID,
       precioEntradaMayor: null,
       precioEntradaMenor: null,
       listaPrecioIdSocio: 1,
