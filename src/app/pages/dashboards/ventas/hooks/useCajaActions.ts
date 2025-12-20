@@ -400,15 +400,15 @@ export function useCajaActions(
         minute: "2-digit",
       });
 
-      // Funcionalidad real de cierre de caja (COMENTADA):
+      // Funcionalidad real de cierre de caja:
       // 1) Cerrar caja en backend
       // 2) Refrescar estado en frontend
       // 3) Marcar caja como cerrada en el contexto
-      // await axios.patch(`/api/cajas/${cajaId}/cerrar`);
-      // await refreshCajaEstado();
-      // setCajaAbierta(false);
+      await axios.patch(`/api/cajas/${cajaId}/cerrar`);
+      await refreshCajaEstado();
+      setCajaAbierta(false);
 
-      // Generar el ticket (solo impresión, sin cerrar la caja)
+      // 4) Una vez que el cierre se realizó correctamente, generar el ticket
       await generateTicketCierre({
         caja: {
           id: caja.id,
