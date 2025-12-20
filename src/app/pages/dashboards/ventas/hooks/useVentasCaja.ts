@@ -13,6 +13,10 @@ export interface VentaCajaResponse {
   deleted_at: string | null;
   total_detalles_convenio: number;
   total_detalles_sin_convenio: number;
+  tipo_convenio: {
+    id: number;
+    nombre: string;
+  } | null;
   estado: {
     id: number;
     nombre: string;
@@ -95,7 +99,8 @@ export function useVentasCaja(
       const processedVentas: VentaCaja[] = response.data.map((v) => {
         const montoTotal = parseFloat(v.monto_total);
         const totalEntradas = v.total_detalles_convenio + v.total_detalles_sin_convenio;
-        const convenioNombre = v.cliente.persona.afiliado?.tipo_convenio?.nombre || "No Afiliado";
+        // Usar la misma lógica que en useCajaActions: tipo_convenio de la venta, o "Sin Convenio" si es null
+        const convenioNombre = v.tipo_convenio?.nombre || "Sin Convenio";
         const estadoNombre = v.estado?.nombre || "";
 
         return {

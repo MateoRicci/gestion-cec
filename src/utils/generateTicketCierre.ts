@@ -1,3 +1,54 @@
+/**
+ * GENERACIÓN DE TICKET DE CIERRE DE CAJA
+ * 
+ * Este archivo contiene la función `generateTicketCierre` que crea un PDF con el resumen
+ * de cierre de caja en formato ticketera (79mm de ancho).
+ * 
+ * ORIGEN DE LOS DATOS:
+ * Los datos provienen de la función `handleCerrarCaja` en:
+ * `src/app/pages/dashboards/ventas/hooks/useCajaActions.ts`
+ * 
+ * DATOS QUE RECIBE:
+ * - caja: Información de la caja (id, nombre, descripción, usuarioApertura)
+ *   → Se obtiene de: `/api/cajas/abierta` (endpoint de caja abierta)
+ *   → usuarioApertura: Se obtiene del localStorage (auth-storage)
+ * 
+ * - movimientos: Resumen de movimientos manuales agrupados por tipo
+ *   → Se obtiene de: `/api/cajas/${cajaId}/movimientos`
+ *   → Se filtran movimientos manuales (excluyendo ventas)
+ *   → Se agrupan por tipo (Ingreso/Egreso) y subtipo (Mayor/Menor)
+ * 
+ * - balanceEfectivo: Balance de efectivo (ingresos, egresos, ventas en efectivo, total)
+ *   → ingresos: Suma de todos los movimientos con monto > 0
+ *   → egresos: Suma absoluta de todos los movimientos con monto < 0
+ *   → ventasEfectivo: Suma de ventas pagadas en efectivo
+ *   → total: ingresos - egresos + ventasEfectivo
+ * 
+ * - balanceMetodosPago: Resumen de ventas por método de pago
+ *   → Se obtiene de: `/api/ventas?caja_id=${cajaId}`
+ *   → Se agrupa por método de pago (obtenido de `/api/medios-pago`)
+ *   → Se suman los montos totales de cada venta por método
+ * 
+ * - resumenConvenios: Resumen de entradas por convenio
+ *   → Se obtiene de las ventas (`/api/ventas?caja_id=${cajaId}`)
+ *   → Se procesa según si el cliente tiene afiliado/convenio
+ *   → Precios: Convenio = $0, Sin convenio = $5000
+ *   → Se agrupa por tipo de convenio y se cuenta cantidad de entradas
+ * 
+ * - fechaCierre: Fecha y hora del cierre formateada en español argentino
+ *   → Se genera con: `new Date().toLocaleDateString("es-AR", {...})`
+ * 
+ * FUNCIONALIDAD:
+ * 1. Calcula el alto necesario del PDF según la cantidad de datos
+ * 2. Crea un PDF con jsPDF en formato ticketera (79mm ancho)
+ * 3. Genera el contenido del ticket con:
+ *    - Encabezado (título, fecha, punto de venta, usuario)
+ *    - Movimientos en efectivo (ingresos, ventas, egresos, saldo)
+ *    - Entradas por método de pago
+ *    - Total general
+ * 4. Descarga automáticamente el PDF con nombre: `cierre_caja_{id}_{fecha}.pdf`
+ */
+
 import jsPDF from "jspdf";
 
 interface CajaInfo {
@@ -24,6 +75,11 @@ interface ResumenConvenio {
   monto: number;
 }
 
+interface PersonasPorConvenio {
+  convenio: string;
+  cantidad: number;
+}
+
 interface TicketCierreData {
   caja: CajaInfo;
   movimientos: MovimientoResumen[];
@@ -31,15 +87,17 @@ interface TicketCierreData {
     ingresos: number;
     egresos: number;
     ventasEfectivo: number;
+    ventasEfectivoCanceladas: number;
     total: number;
   };
   balanceMetodosPago: BalanceMetodoPago[];
   resumenConvenios: ResumenConvenio[];
+  personasPorConvenio: PersonasPorConvenio[];
   fechaCierre: string;
 }
 
 export async function generateTicketCierre(data: TicketCierreData): Promise<void> {
-  const { caja, balanceEfectivo, balanceMetodosPago, resumenConvenios, fechaCierre } = data;
+  const { caja, balanceEfectivo, balanceMetodosPago, resumenConvenios, personasPorConvenio, fechaCierre } = data;
 
   // Calcular el alto necesario aproximado antes de crear el PDF
   const pageWidth = 79; // Ancho ticketera en mm
@@ -57,6 +115,9 @@ export async function generateTicketCierre(data: TicketCierreData): Promise<void
   
   // Balance métodos de pago
   estimatedHeight += 4 + (balanceMetodosPago.length * 4) + 4;
+  
+  // Personas por convenio
+  estimatedHeight += 4 + (personasPorConvenio.length * 3) + 4;
   
   // Resumen convenios
   estimatedHeight += 4 + (resumenConvenios.length * 4) + 4;
@@ -138,15 +199,24 @@ export async function generateTicketCierre(data: TicketCierreData): Promise<void
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
   });
+  const ventasCanceladasFormateado = Math.round(balanceEfectivo.ventasEfectivoCanceladas).toLocaleString('es-AR', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  });
   const totalEfectivoFormateado = Math.round(balanceEfectivo.total).toLocaleString('es-AR', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
   });
 
-  doc.text(`Ingresos Manuales: $${ingresosFormateado}`, marginLeft, yPosition, { align: "left" });
+  doc.text(`Ingresos manuales: $${ingresosFormateado}`, marginLeft, yPosition, { align: "left" });
   yPosition += 3;
   doc.text(`Ventas: $${ventasEfectivoFormateado}`, marginLeft, yPosition, { align: "left" });
   yPosition += 3;
+  // Mostrar ventas canceladas solo si hay alguna
+  if (balanceEfectivo.ventasEfectivoCanceladas > 0) {
+    doc.text(`Ventas canceladas: $${ventasCanceladasFormateado}`, marginLeft, yPosition, { align: "left" });
+    yPosition += 3;
+  }
   doc.text(`Egresos: $${egresosFormateado}`, marginLeft, yPosition, { align: "left" });
   yPosition += 3;
   
@@ -184,6 +254,28 @@ export async function generateTicketCierre(data: TicketCierreData): Promise<void
   doc.setLineWidth(0.3);
   doc.line(marginLeft, yPosition, marginLeft + contentWidth, yPosition);
   yPosition += 4;
+
+  // Cantidad de personas ingresadas por tipo de convenio
+  if (personasPorConvenio.length > 0) {
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "bold");
+    doc.text("CANTIDAD DE PERSONAS INGRESADAS POR CONVENIO", marginLeft, yPosition, { align: "left" });
+    doc.setFont("helvetica", "normal");
+    yPosition += 4;
+
+    personasPorConvenio.forEach((item) => {
+      doc.text(`${item.convenio}: ${item.cantidad} personas`, marginLeft, yPosition, { align: "left" });
+      yPosition += 3;
+    });
+
+    yPosition += 3;
+
+    // Línea separadora
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.3);
+    doc.line(marginLeft, yPosition, marginLeft + contentWidth, yPosition);
+    yPosition += 4;
+  }
 
   // Resumen por Convenio
   // doc.setFontSize(7);

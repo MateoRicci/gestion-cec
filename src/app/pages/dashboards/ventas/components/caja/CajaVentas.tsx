@@ -73,7 +73,7 @@ function VentaItemBase({ venta, onAnular }: VentaItemProps) {
       <div className="col-span-2">
         <span
           className={`text-xs px-2 py-0.5 rounded whitespace-nowrap inline-block ${
-            venta.convenioNombre === "No Afiliado"
+            venta.convenioNombre === "Sin Convenio"
               ? "bg-gray-500/20 text-gray-400"
               : "bg-primary-500/20 text-primary-400"
           }`}
