@@ -99,6 +99,16 @@ const protectedRoutes: RouteObject = {
                     ).default,
                   }),
                 },
+                {
+                  path: "convenios",
+                  lazy: async () => ({
+                    Component: (
+                      await import(
+                        "@/app/pages/dashboards/configuraciones/convenios"
+                      )
+                    ).default,
+                  }),
+                },
               ],
             },
           ],

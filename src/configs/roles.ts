@@ -23,7 +23,8 @@ export type ModuleId =
   | "dashboards.configuraciones"
   | "dashboards.configuraciones.puntos-venta"
   | "dashboards.configuraciones.productos"
-  | "dashboards.configuraciones.empleados";
+  | "dashboards.configuraciones.empleados"
+  | "dashboards.configuraciones.convenios";
 
 /**
  * Configuración de módulos permitidos por rol
@@ -39,6 +40,7 @@ export const roleModules: Record<RoleName, ModuleId[]> = {
     "dashboards.configuraciones.puntos-venta",
     "dashboards.configuraciones.productos",
     "dashboards.configuraciones.empleados",
+    "dashboards.configuraciones.convenios",
   ],
   "Empleado Supervisor": [
     "dashboards.home",
@@ -47,6 +49,7 @@ export const roleModules: Record<RoleName, ModuleId[]> = {
     "dashboards.configuraciones.puntos-venta",
     "dashboards.configuraciones.productos",
     "dashboards.configuraciones.empleados",
+    "dashboards.configuraciones.convenios",
   ],
   
   // Empleado Venta solo puede ver ventas

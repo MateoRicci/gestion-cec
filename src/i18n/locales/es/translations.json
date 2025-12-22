@@ -7,7 +7,8 @@
       "configuraciones": "Configuraciones",
       "configuraciones.puntosVenta": "Puntos de Venta",
       "configuraciones.productos": "Productos",
-      "configuraciones.empleados": "Empleados"
+      "configuraciones.empleados": "Empleados",
+      "configuraciones.convenios": "Convenios"
     },
     "settings": {
       "settings": "Configuración",

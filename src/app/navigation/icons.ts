@@ -21,6 +21,8 @@ export const navigationIcons: Record<string, ElementType> = {
   "dashboards.configuraciones.puntosVenta": TbBuildingStore,
   "dashboards.configuraciones.productos": TbPackage,
   "dashboards.configuraciones.empleados": TbUsers,
+  // Reutilizamos el icono de usuarios para Convenios para evitar problemas de exports
+  "dashboards.configuraciones.convenios": TbUsers,
   "settings.general": HiUserIcon,
   "settings.appearance": TbPalette,
 };
