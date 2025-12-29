@@ -20,6 +20,7 @@ export type RoleName =
 export type ModuleId = 
   | "dashboards.home"
   | "dashboards.ventas"
+  | "dashboards.reportes"
   | "dashboards.configuraciones"
   | "dashboards.configuraciones.puntos-venta"
   | "dashboards.configuraciones.productos"
@@ -36,6 +37,7 @@ export const roleModules: Record<RoleName, ModuleId[]> = {
   "Admin": [
     "dashboards.home",
     "dashboards.ventas",
+    "dashboards.reportes",
     "dashboards.configuraciones",
     "dashboards.configuraciones.puntos-venta",
     "dashboards.configuraciones.productos",
@@ -45,6 +47,7 @@ export const roleModules: Record<RoleName, ModuleId[]> = {
   "Empleado Supervisor": [
     "dashboards.home",
     "dashboards.ventas",
+    "dashboards.reportes",
     "dashboards.configuraciones",
     "dashboards.configuraciones.puntos-venta",
     "dashboards.configuraciones.productos",
@@ -61,6 +64,7 @@ export const roleModules: Record<RoleName, ModuleId[]> = {
   // Los demás roles solo pueden ver el home
   "Empleado Administrativo": [
     "dashboards.home",
+    "dashboards.reportes",
   ],
   "Cliente": [
     "dashboards.home",

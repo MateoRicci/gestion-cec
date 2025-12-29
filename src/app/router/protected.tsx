@@ -51,6 +51,20 @@ const protectedRoutes: RouteObject = {
               },
             },
             {
+              path: "reportes",
+              lazy: async () => {
+                const ReportesPage = (await import("@/app/pages/dashboards/reportes"))
+                  .default;
+                return {
+                  Component: () => (
+                    <RoleGuard requiredModule="dashboards.reportes">
+                      <ReportesPage />
+                    </RoleGuard>
+                  ),
+                };
+              },
+            },
+            {
               path: "configuraciones",
               lazy: async () => {
                 const ConfiguracionesPage = (

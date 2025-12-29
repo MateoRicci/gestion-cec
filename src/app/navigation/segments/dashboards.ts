@@ -26,6 +26,14 @@ export const dashboards: NavigationTree = {
       icon: "dashboards.ventas",
     },
     {
+      id: "dashboards.reportes",
+      path: path(ROOT_DASHBOARDS, "/reportes"),
+      type: "item",
+      title: "Reportes",
+      transKey: "nav.dashboards.reportes",
+      icon: "dashboards.reportes",
+    },
+    {
       id: "dashboards.configuraciones",
       path: path(ROOT_DASHBOARDS, "/configuraciones"),
       type: "collapse",

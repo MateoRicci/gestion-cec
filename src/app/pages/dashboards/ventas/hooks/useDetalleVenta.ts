@@ -135,12 +135,12 @@ export function useDetalleVenta(
           } else {
             // Para socios, usar el producto según la edad
             if (persona.edad_categoria === "mayor") {
-              productoId = precios.productoEntradaMayorId || 0;
+              productoId = precios.productoEntradaMayorId || 1;
               precio = precios.precioEntradaMayor || 0;
               nombreLista = "Entrada Afiliado Mayor";
               productoNombre = `Entrada Afiliado Mayor ${persona.nombre}`;
             } else {
-              productoId = precios.productoEntradaMenorId || 1;
+              productoId = precios.productoEntradaMenorId || 2;
               precio = precios.precioEntradaMenor || 0;
               nombreLista = "Entrada Afiliado Menor";
               productoNombre = `Entrada Afiliado Menor ${persona.nombre}`;
