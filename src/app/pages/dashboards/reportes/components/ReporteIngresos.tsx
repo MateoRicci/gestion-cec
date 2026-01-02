@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { DatePicker } from "@/components/shared/form/Datepicker";
+import { Listbox } from "@/components/shared/form/StyledListbox";
 import { useReporteIngresos } from "../hooks/useReporteIngresos";
+import { useCajasRange, Caja } from "../hooks/useCajasRange";
 
 export function ReporteIngresos() {
   // Obtener fecha de hoy en formato YYYY-MM-DD
@@ -14,11 +16,49 @@ export function ReporteIngresos() {
 
   const [fechaDesde, setFechaDesde] = useState<string>(getTodayDate());
   const [fechaHasta, setFechaHasta] = useState<string>(getTodayDate());
+  const [selectedCaja, setSelectedCaja] = useState<Caja | null>(null);
+
+  const { cajas } = useCajasRange(fechaDesde, fechaHasta);
+
+  // Efecto para resetear la caja seleccionada si cambia el rango de fechas
+  // Opcional: Podríamos querer mantenerla si el ID sigue existiendo, pero por simplicidad
+  // y para evitar estados inconsistentes (caja de otra fecha), reseteamos a "Todas".
+  // Sin embargo, si el usuario solo cambia un día, quizás quiera seguir viendo "Todas".
+  // Si seleccionó una caja específica, y cambia de fecha, esa caja ya no es válida para el nuevo rango
+  // (porque las cajas son diarias/por turno). Así que resetear a null es correcto.
+  /*
+  useEffect(() => {
+    setSelectedCaja(null);
+  }, [fechaDesde, fechaHasta]);
+  */
+  // Mejor no usar useEffect para esto si podemos evitarlo, pero aqui es necesario saber cuando refrescar.
+  // El hook useCajasRange ya refresca las cajas.
+  // Si cajas cambia, verificamos si la caja seleccionada sigue existiendo.
 
   const { reporteGroups, loading, error } = useReporteIngresos(
     fechaDesde,
-    fechaHasta
+    fechaHasta,
+    selectedCaja?.id ?? null
   );
+
+  // Preparar opciones para el select
+  const cajaOptions = [
+    { id: 0, label: "Todas las cajas" }, // Opción "Todas"
+    ...cajas.map((caja: Caja) => ({
+      id: caja.id,
+      label: `${caja.descripcion} - ${caja.usuario.persona.nombre} ${caja.usuario.persona.apellido}`,
+      value: caja
+    })),
+  ];
+
+  /* Manejo de cambio en el Select */
+  const handleCajaChange = (option: any) => {
+    if (option.id === 0) {
+      setSelectedCaja(null);
+    } else {
+      setSelectedCaja(option.value);
+    }
+  };
 
   // Convertir string de fecha a Date para el DatePicker
   const fechaDesdeDate = fechaDesde ? new Date(fechaDesde + "T00:00:00") : new Date();
@@ -106,6 +146,16 @@ export function ReporteIngresos() {
             className="w-full"
           />
         </div>
+        <div className="flex-1">
+          <Listbox
+            label="Caja"
+            data={cajaOptions}
+            displayField="label"
+            value={selectedCaja ? cajaOptions.find(opt => opt.id === selectedCaja.id) : cajaOptions[0]}
+            onChange={handleCajaChange}
+            placeholder="Seleccionar caja"
+          />
+        </div>
       </div>
 
       {/* Resultados */}
@@ -181,15 +231,70 @@ export function ReporteIngresos() {
                   </>
                 ))}
 
-                {/* Total General */}
+                {/* Totals Breakdown */}
                 <tr className="bg-gray-100 dark:bg-dark-700 font-bold border-t-2 border-gray-200 dark:border-dark-500">
-                  <td className="px-6 py-4 text-sm text-gray-900 dark:text-dark-50">
-                    Total General
+                  <td className="px-6 py-2 text-sm text-gray-900 dark:text-dark-50">
+                    Total Entradas
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-900 dark:text-dark-50 text-right">
+                  <td className="px-6 py-2 text-sm text-gray-900 dark:text-dark-50 text-right">
+                    {reporteGroups
+                      .filter(g => g.convenio !== "Estadías" && g.convenio !== "Turnos")
+                      .reduce((sum, g) => sum + g.totalCantidad, 0)}
+                  </td>
+                  <td className="px-6 py-2 text-sm text-gray-900 dark:text-dark-50 text-right">
+                    {formatCurrency(
+                      reporteGroups
+                        .filter(g => g.convenio !== "Estadías" && g.convenio !== "Turnos")
+                        .reduce((sum, g) => sum + g.totalMonto, 0)
+                    )}
+                  </td>
+                </tr>
+
+                <tr className="bg-gray-100 dark:bg-dark-700 font-bold">
+                  <td className="px-6 py-2 text-sm text-gray-900 dark:text-dark-50">
+                    Total Estadías
+                  </td>
+                  <td className="px-6 py-2 text-sm text-gray-900 dark:text-dark-50 text-right">
+                    {reporteGroups
+                      .filter(g => g.convenio === "Estadías")
+                      .reduce((sum, g) => sum + g.totalCantidad, 0)}
+                  </td>
+                  <td className="px-6 py-2 text-sm text-gray-900 dark:text-dark-50 text-right">
+                    {formatCurrency(
+                      reporteGroups
+                        .filter(g => g.convenio === "Estadías")
+                        .reduce((sum, g) => sum + g.totalMonto, 0)
+                    )}
+                  </td>
+                </tr>
+
+                <tr className="bg-gray-100 dark:bg-dark-700 font-bold">
+                  <td className="px-6 py-2 text-sm text-gray-900 dark:text-dark-50">
+                    Total Turnos
+                  </td>
+                  <td className="px-6 py-2 text-sm text-gray-900 dark:text-dark-50 text-right">
+                    {reporteGroups
+                      .filter(g => g.convenio === "Turnos")
+                      .reduce((sum, g) => sum + g.totalCantidad, 0)}
+                  </td>
+                  <td className="px-6 py-2 text-sm text-gray-900 dark:text-dark-50 text-right">
+                    {formatCurrency(
+                      reporteGroups
+                        .filter(g => g.convenio === "Turnos")
+                        .reduce((sum, g) => sum + g.totalMonto, 0)
+                    )}
+                  </td>
+                </tr>
+
+                {/* Total General (Sum of all) */}
+                <tr className="bg-gray-200 dark:bg-dark-600 font-extrabold border-t border-gray-300 dark:border-dark-400">
+                  <td className="px-6 py-4 text-base text-gray-900 dark:text-dark-50">
+                    TOTAL GENERAL
+                  </td>
+                  <td className="px-6 py-4 text-base text-gray-900 dark:text-dark-50 text-right">
                     {totalPersonas}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-900 dark:text-dark-50 text-right">
+                  <td className="px-6 py-4 text-base text-gray-900 dark:text-dark-50 text-right">
                     {formatCurrency(totalMonto)}
                   </td>
                 </tr>

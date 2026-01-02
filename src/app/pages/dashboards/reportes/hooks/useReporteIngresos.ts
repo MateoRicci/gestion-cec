@@ -37,7 +37,8 @@ const PRECIO_SIN_CONVENIO = 5000;
 
 export function useReporteIngresos(
   fechaDesde: string | null,
-  fechaHasta: string | null
+  fechaHasta: string | null,
+  cajaId: number | null = null
 ): UseReporteIngresosReturn {
   const [reporteGroups, setReporteGroups] = useState<ReporteGroup[]>([]);
   const [loading, setLoading] = useState(false);
@@ -53,14 +54,18 @@ export function useReporteIngresos(
     setError(null);
 
     try {
+      const params: any = {
+        fecha_desde: fechaDesde,
+        fecha_hasta: fechaHasta,
+      };
+
+      if (cajaId) {
+        params.caja_id = cajaId;
+      }
+
       const response = await axios.get<VentaReporteItem[]>(
         `/api/ventas/reporte`,
-        {
-          params: {
-            fecha_desde: fechaDesde,
-            fecha_hasta: fechaHasta,
-          },
-        }
+        { params }
       );
 
       // Agrupación: Map<NombreConvenio, Map<NombreProducto, {cantidad, monto}>>
@@ -84,14 +89,31 @@ export function useReporteIngresos(
         const totalPadron = parseInt(String(item.total_padron)) || 0;
         const totalFueraPadron = parseInt(String(item.total_fuera_padron)) || 0;
 
+        // Helper para determinar el grupo especial o default
+        const getSpecialGroup = (prodName: string): string | null => {
+          const lowerName = prodName.toLowerCase();
+          if (lowerName.includes("estadia") || lowerName.includes("estadía")) return "Estadías";
+          if (lowerName.includes("turno")) return "Turnos";
+          return null;
+        };
+
+        const specialGroup = getSpecialGroup(producto);
+
         // 1. Procesar "Sin Convenio" (fuera_padron)
         if (totalFueraPadron > 0) {
           let precio = PRECIO_SIN_CONVENIO;
           if (producto.toLowerCase().includes("menor")) {
             precio = 0;
           }
+          if (producto.toLowerCase().includes("pcd")) {
+            precio = 0;
+          }
+
+          // Si es grupo especial, usalo como convenio, sino "Sin Convenio"
+          const groupName = specialGroup || "Sin Convenio";
+
           addToGroup(
-            "Sin Convenio",
+            groupName,
             producto,
             totalFueraPadron,
             totalFueraPadron * precio
@@ -107,8 +129,18 @@ export function useReporteIngresos(
           if (producto.toLowerCase().includes("menor")) {
             precio = 0;
           }
+          if (producto.toLowerCase().includes("pcd")) {
+            precio = 0;
+          }
+
+          // Si es grupo especial, usalo como convenio, sino el nombre del convenio real
+          // ¿Deberíamos separar estadias/turnos AUNQUE tengan convenio? 
+          // El requerimiento dice "separar ... detectando si el nombre contiene Estadia o Turno".
+          // Asumiré que sí, queremos agruparlos por tipo de producto (Estadia/Turno) ignorando el convenio original para la visualización.
+          const groupName = specialGroup || nombreConvenio;
+
           addToGroup(
-            nombreConvenio,
+            groupName,
             producto,
             totalPadron,
             totalPadron * precio
@@ -131,9 +163,26 @@ export function useReporteIngresos(
           totalMonto: detalles.reduce((sum, d) => sum + d.monto, 0)
         };
       }).sort((a, b) => {
-        // "Sin Convenio" al final
-        if (a.convenio === "Sin Convenio") return 1;
-        if (b.convenio === "Sin Convenio") return -1;
+        // Orden personalizado: 
+        // 1. Convenios normales (A-Z)
+        // 2. Sin Convenio
+        // 3. Estadías
+        // 4. Turnos
+
+        const getOrder = (name: string) => {
+          if (name === "Sin Convenio") return 100;
+          if (name === "Estadías") return 200;
+          if (name === "Turnos") return 300;
+          return 0; // Convenios normales al principio
+        };
+
+        const orderA = getOrder(a.convenio);
+        const orderB = getOrder(b.convenio);
+
+        if (orderA !== orderB) {
+          return orderA - orderB;
+        }
+
         return a.convenio.localeCompare(b.convenio);
       });
 
@@ -145,7 +194,7 @@ export function useReporteIngresos(
     } finally {
       setLoading(false);
     }
-  }, [fechaDesde, fechaHasta]);
+  }, [fechaDesde, fechaHasta, cajaId]);
 
   useEffect(() => {
     fetchReporte();
