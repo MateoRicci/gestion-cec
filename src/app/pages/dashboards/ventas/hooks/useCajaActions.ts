@@ -54,7 +54,7 @@ export function useCajaActions(
 
       // Refrescar el estado de la caja desde el servidor
       await refreshCajaEstado();
-      
+
       setCajaAbierta(true);
       setConfirmState("success");
       // Guardar la acción actual antes de resetear
@@ -96,18 +96,18 @@ export function useCajaActions(
 
     try {
       // Obtener datos reales de la caja, movimientos y ventas
-      
+
       // 1. Obtener información de la caja (usar el endpoint de caja abierta)
       const cajaResponse = await axios.get<{ id: number; nombre: string; descripcion: string; usuario_id: number; punto_venta_id: number }>("/api/cajas/abierta");
       const caja = cajaResponse.data;
-      
+
       // log caja
       console.log("caja", caja);
-      
+
       // 2. Obtener movimientos de la caja
       const movimientosResponse = await axios.get(`/api/cajas/${cajaId}/movimientos`);
       const movimientosData = movimientosResponse.data;
-      
+
       // 3. Obtener ventas de la caja usando el endpoint correcto
       let ventasData: any[] = [];
       try {
@@ -129,7 +129,7 @@ export function useCajaActions(
       const mediosPagoMap = new Map<number, string>(
         mediosPago.map((mp) => [mp.id, mp.nombre])
       );
-      
+
       // Filtrar movimientos manuales (excluir movimientos de ventas) SOLO para el resumen agrupado,
       // pero NO para el cálculo de ingresos/egresos, donde debemos considerar cualquier monto negativo.
       const movimientosManuales = movimientosData.filter((mov: any) => {
@@ -137,10 +137,10 @@ export function useCajaActions(
         // Excluir movimientos que sean de ventas
         return !accionType.includes("venta") && !accionType.includes("sale");
       });
-      
+
       // Procesar movimientos manuales: agrupar por tipo y subtipo
       const movimientosAgrupados = new Map<string, { tipo: string; subtipo?: string; monto: number }>();
-      
+
       movimientosManuales.forEach((mov: any) => {
         // si el nombre no contiene manual no lo agrego
         if (!mov.tipo_movimiento_caja?.nombre?.toLowerCase().includes("manual")) {
@@ -149,13 +149,13 @@ export function useCajaActions(
 
         const tipoNombre = mov.tipo_movimiento_caja?.nombre || "Movimiento";
         const montoNum = parseFloat(mov.monto);
-        
-        if(tipoNombre !== "Ingreso Manual" && tipoNombre !== "Egreso Manual") {
+
+        if (tipoNombre !== "Ingreso Manual" && tipoNombre !== "Egreso Manual") {
           return;
         }
         // Crear clave única para agrupar
         const key = tipoNombre;
-        
+
         // Agregar o sumar al monto existente
         const existing = movimientosAgrupados.get(key);
         if (existing) {
@@ -167,11 +167,11 @@ export function useCajaActions(
           });
         }
       });
-      
+
       // Convertir a array
       const movimientosResumen = Array.from(movimientosAgrupados.values());
       console.log("movimientosResumen", movimientosResumen);
-      
+
       // Calcular ventas en efectivo y balance por método de pago usando nombres desde la API
       // LAS VENTAS NO CANCELADAS SOLO SE SUMAN LAS QUE SON EN EFECTIVO
       const efectivoId =
@@ -186,7 +186,7 @@ export function useCajaActions(
         const accionType = mov.accion_movimiento_type;
         const tipoNombre = mov.tipo_movimiento_caja?.nombre?.toLowerCase() || "";
         const esManual = tipoNombre.includes("manual");
-        
+
         // Es manual si: accion_movimiento_type es null/undefined Y el nombre contiene "manual"
         return (accionType === null || accionType === undefined) && esManual;
       };
@@ -200,7 +200,7 @@ export function useCajaActions(
           return monto > 0 && esMovimientoManual(m);
         })
         .reduce((sum: number, m: any) => sum + parseFloat(m.monto), 0);
-      
+
       const egresos = Math.abs(
         movimientosData
           .filter((m: any) => {
@@ -213,8 +213,8 @@ export function useCajaActions(
       // Calcular ventas canceladas en efectivo (para restarlas como egresos)
       const ventasEfectivoCanceladas = ventasData
         .filter((v: any) => {
-          const esEfectivo = efectivoId !== null 
-            ? v.medio_pago_id === efectivoId 
+          const esEfectivo = efectivoId !== null
+            ? v.medio_pago_id === efectivoId
             : (v.medio_pago?.nombre?.toLowerCase() || "").includes("efectivo");
           return esEfectivo && v.estado?.nombre === "Cancelada";
         })
@@ -227,8 +227,8 @@ export function useCajaActions(
       // Las canceladas se restan después en egresos, pero deben aparecer aquí para el balance correcto
       const ventasEfectivo = ventasData
         .filter((v: any) => {
-          const esEfectivo = efectivoId !== null 
-            ? v.medio_pago_id === efectivoId 
+          const esEfectivo = efectivoId !== null
+            ? v.medio_pago_id === efectivoId
             : (v.medio_pago?.nombre?.toLowerCase() || "").includes("efectivo");
           return esEfectivo; // Incluir todas las ventas en efectivo, canceladas y no canceladas
         })
@@ -244,7 +244,7 @@ export function useCajaActions(
         if (venta.estado?.nombre === "Cancelada") {
           return;
         }
-        
+
         const metodoPagoId = venta.medio_pago_id || 0;
         const nombreDesdeApi = mediosPagoMap.get(metodoPagoId);
         const nombreDesdeVenta = venta.medio_pago?.nombre;
@@ -260,7 +260,7 @@ export function useCajaActions(
           monto,
         })
       );
-      
+
       // Calcular balance de efectivo
       // Las ventas canceladas se muestran por separado, no se suman a egresos
       const balanceEfectivo = {
@@ -289,67 +289,75 @@ export function useCajaActions(
         console.warn("Error al obtener username del localStorage:", error);
         usuarioApertura = user?.email || "Usuario";
       }
-      
+
       // Procesar resumen por convenio
       // Precios fijos por tipo de entrada
       const PRECIO_CONVENIO = 0; // Entradas con convenio: $0
       const PRECIO_CONVENIO_EMPLEADOS = 4000;
       const PRECIO_SIN_CONVENIO = 5000; // Entradas sin convenio: $5000
 
-      // Usar una sola declaración de ventasEfectivo para evitar 'Cannot redeclare block-scoped variable'
-      const conveniosMap = new Map<string, { cantidad: number; monto: number }>();
-      // Eliminar la redeclaración de ventasEfectivo aquí, ya que debe declararse solo una vez en el archivo.
+      // 5. Obtener reporte pre-calculado por producto y convenio
+      let reporteData: any[] = [];
+      try {
+        const reporteResponse = await axios.get(`/api/ventas/reporte?caja_id=${cajaId}`);
+        reporteData = reporteResponse.data || [];
+      } catch (error) {
+        console.warn("No se pudo obtener el reporte de ventas:", error);
+      }
 
-      ventasData.forEach((venta: any) => {
-        // Si la venta está cancelada no la sumo:
-        if (venta.estado?.nombre !== "Cancelada") {
-          
-          
-          const afiliado = venta.cliente?.persona?.afiliado;
-          const tieneConvenio = afiliado !== null && afiliado !== undefined;
-          
-          if (tieneConvenio) {
-            // Si tiene convenio, sumar las entradas con convenio a ese convenio específico
-            const nombreConvenio = afiliado.tipo_convenio?.nombre || "Convenio sin nombre";
-            const cantidadConConvenio = parseInt(venta.total_detalles_convenio) || 0;
-            const cantidadSinConvenio = parseInt(venta.total_detalles_sin_convenio) || 0;
-            
-            // Sumar entradas con convenio al convenio específico (monto = cantidad * precio convenio)
-            if (cantidadConConvenio > 0) {
-              let precio = PRECIO_CONVENIO;
-              if (nombreConvenio.toLowerCase().includes("Empleado CEC")) {
-                precio = PRECIO_CONVENIO_EMPLEADOS;
-              }
-              const current = conveniosMap.get(nombreConvenio) || { cantidad: 0, monto: 0 };
-              conveniosMap.set(nombreConvenio, {
-              cantidad: current.cantidad + cantidadConConvenio,
-              monto: current.monto + (cantidadConConvenio * precio),
-              });
-            }
-            
-            // Sumar entradas sin convenio al contador "Sin convenio"
-            if (cantidadSinConvenio > 0) {
-              const current = conveniosMap.get("Sin convenio") || { cantidad: 0, monto: 0 };
-              conveniosMap.set("Sin convenio", {
-                cantidad: current.cantidad + cantidadSinConvenio,
-                monto: current.monto + (cantidadSinConvenio * PRECIO_SIN_CONVENIO),
-              });
-            }
-          } else {
-            // Si no tiene convenio (afiliado es null), sumar solo al contador "Sin convenio"
-            const cantidadSinConvenio = parseInt(venta.total_detalles_sin_convenio) || 0;
-            
-            if (cantidadSinConvenio > 0) {
-              const current = conveniosMap.get("Sin convenio") || { cantidad: 0, monto: 0 };
-              conveniosMap.set("Sin convenio", {
-                cantidad: current.cantidad + cantidadSinConvenio,
-                monto: current.monto + (cantidadSinConvenio * PRECIO_SIN_CONVENIO),
-              });
-            }
-          } 
+      const conveniosMap = new Map<string, { cantidad: number; monto: number }>();
+      const personasPorConvenioMap = new Map<string, number>();
+
+
+
+      reporteData.forEach((item: any) => {
+        const producto = item.producto;
+        const nombreConvenio = item.tipo_convenio;
+        const totalPadron = parseInt(item.total_padron) || 0;
+        const totalFueraPadron = parseInt(item.total_fuera_padron) || 0;
+
+        // 1. Procesar los fuera_padron (Sin Convenio) por PRODUCTO
+        if (totalFueraPadron > 0) {
+          // Clave compuesta: Producto - Sin Convenio
+          const key = `${producto} - Sin Convenio`;
+
+          // Guardar en mapa de montos (para resumenConvenios)
+          const current = conveniosMap.get(key) || { cantidad: 0, monto: 0 };
+          conveniosMap.set(key, {
+            cantidad: current.cantidad + totalFueraPadron,
+            monto: current.monto + (totalFueraPadron * PRECIO_SIN_CONVENIO),
+          });
+
+          // Guardar en mapa de personas (para personasPorConvenio)
+          const currentPersonas = personasPorConvenioMap.get(key) || 0;
+          personasPorConvenioMap.set(key, currentPersonas + totalFueraPadron);
+        }
+
+        // 2. Procesar los que están en padrón (tienen convenio)
+        if (totalPadron > 0 && nombreConvenio) {
+          // Clave compuesta: Producto - Convenio
+          const key = `${producto} - ${nombreConvenio}`;
+
+          let precio = PRECIO_CONVENIO;
+          if (nombreConvenio.toLowerCase().includes("empleado cec")) {
+            precio = PRECIO_CONVENIO_EMPLEADOS;
+          }
+
+          // Guardar en mapa de montos (para resumenConvenios)
+          const current = conveniosMap.get(key) || { cantidad: 0, monto: 0 };
+          conveniosMap.set(key, {
+            cantidad: current.cantidad + totalPadron,
+            monto: current.monto + (totalPadron * precio),
+          });
+
+          // Guardar en mapa de personas (para personasPorConvenio)
+          const currentPersonas = personasPorConvenioMap.get(key) || 0;
+          personasPorConvenioMap.set(key, currentPersonas + totalPadron);
         }
       });
-      
+
+
+
       // Convertir a array para el ticket
       const resumenConvenios = Array.from(conveniosMap.entries()).map(([convenio, data]) => ({
         convenio,
@@ -357,28 +365,6 @@ export function useCajaActions(
         monto: data.monto,
       }));
 
-      // Calcular cantidad de personas ingresadas por tipo de convenio (solo ventas NO canceladas)
-      const personasPorConvenioMap = new Map<string, number>();
-      
-      ventasData
-        .filter((venta: any) => venta.estado?.nombre !== "Cancelada")
-        .forEach((venta: any) => {
-          // Procesar total_detalles_convenio
-          const cantidadConvenio = parseInt(venta.total_detalles_convenio) || 0;
-          if (cantidadConvenio > 0) {
-            const nombreConvenio = venta.tipo_convenio?.nombre || "Sin Convenio";
-            const current = personasPorConvenioMap.get(nombreConvenio) || 0;
-            personasPorConvenioMap.set(nombreConvenio, current + cantidadConvenio);
-          }
-          
-          // Procesar total_detalles_sin_convenio
-          const cantidadSinConvenio = parseInt(venta.total_detalles_sin_convenio) || 0;
-          if (cantidadSinConvenio > 0) {
-            const current = personasPorConvenioMap.get("Sin Convenio") || 0;
-            personasPorConvenioMap.set("Sin Convenio", current + cantidadSinConvenio);
-          }
-        });
-      
       // Convertir a array para el ticket
       const personasPorConvenio = Array.from(personasPorConvenioMap.entries())
         .map(([convenio, cantidad]) => ({
@@ -391,7 +377,7 @@ export function useCajaActions(
           if (b.convenio === "Sin Convenio") return -1;
           return a.convenio.localeCompare(b.convenio);
         });
-      
+
       const fechaCierre = new Date().toLocaleDateString("es-AR", {
         day: "2-digit",
         month: "2-digit",
@@ -400,7 +386,7 @@ export function useCajaActions(
         minute: "2-digit",
       });
 
-      // Funcionalidad real de cierre de caja:
+      // 403: Funcionalidad real de cierre de caja:
       // 1) Cerrar caja en backend
       // 2) Refrescar estado en frontend
       // 3) Marcar caja como cerrada en el contexto
@@ -423,7 +409,7 @@ export function useCajaActions(
         personasPorConvenio,
         fechaCierre,
       });
-      
+
       setConfirmState("success");
       // Guardar la acción actual antes de resetear
       setLastConfirmAction(confirmAction);
@@ -467,7 +453,7 @@ export function useCajaActions(
   const getConfirmMessages = () => {
     // Usar la última acción si confirmAction es null (durante la animación de cierre)
     const action = confirmAction || lastConfirmAction;
-    
+
     if (action === "abrir") {
       return {
         pending: {
