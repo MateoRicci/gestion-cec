@@ -103,34 +103,34 @@ export async function generateTicketCierre(data: TicketCierreData): Promise<void
   const pageWidth = 79; // Ancho ticketera en mm
   const marginTop = 5;
   const marginBottom = 5;
-  
+
   // Estimación del alto necesario:
   let estimatedHeight = marginTop;
-  
+
   // Encabezado (título, caja info)
   estimatedHeight += 4 + 6 + 10 + 4 + 4 + 4 + 4; // ~36mm
-  
+
   // Balance efectivo
   estimatedHeight += 4 + 15 + 4;
-  
+
   // Balance métodos de pago
   estimatedHeight += 4 + (balanceMetodosPago.length * 4) + 4;
-  
+
   // Personas por convenio
   estimatedHeight += 4 + (personasPorConvenio.length * 3) + 4;
-  
+
   // Resumen convenios
   estimatedHeight += 4 + (resumenConvenios.length * 4) + 4;
-  
+
   // Cierre final
   estimatedHeight += 4 + 10 + 5;
-  
+
   // Agregar margen de seguridad (20%)
   estimatedHeight = Math.ceil(estimatedHeight * 1.2) + marginBottom;
-  
+
   // Mínimo 100mm, máximo razonable 500mm
   const pageHeight = Math.max(100, Math.min(500, estimatedHeight));
-  
+
   const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",
@@ -163,16 +163,16 @@ export async function generateTicketCierre(data: TicketCierreData): Promise<void
   doc.setFont("helvetica", "normal");
   doc.text(`Punto de venta: ${caja.nombre}`, marginLeft, yPosition, { align: "left" });
   yPosition += 4;
-  
+
   // if (caja.descripcion) {
   //   const descripcionLines = doc.splitTextToSize(caja.descripcion, contentWidth);
   //   doc.text(descripcionLines, marginLeft, yPosition, { align: "left" });
   //   yPosition += descripcionLines.length * 3;
   // }
-  
+
   doc.text(`Usuario caja: ${caja.usuarioApertura}`, marginLeft, yPosition, { align: "left" });
   yPosition += 4;
-  
+
 
   // Línea separadora
   doc.setDrawColor(200, 200, 200);
@@ -219,7 +219,7 @@ export async function generateTicketCierre(data: TicketCierreData): Promise<void
   }
   doc.text(`Egresos: $${egresosFormateado}`, marginLeft, yPosition, { align: "left" });
   yPosition += 3;
-  
+
   doc.setFont("helvetica", "bold");
   doc.text(`Saldo Efectivo: $${totalEfectivoFormateado}`, marginLeft, yPosition, { align: "left" });
   doc.setFont("helvetica", "normal");
@@ -255,51 +255,105 @@ export async function generateTicketCierre(data: TicketCierreData): Promise<void
   doc.line(marginLeft, yPosition, marginLeft + contentWidth, yPosition);
   yPosition += 4;
 
+  let estadias: PersonasPorConvenio[] = [];
+  let turnos: PersonasPorConvenio[] = [];
+
   // Cantidad de personas ingresadas por tipo de convenio
   if (personasPorConvenio.length > 0) {
     doc.setFontSize(7);
     doc.setFont("helvetica", "bold");
-    doc.text("CANTIDAD DE PERSONAS INGRESADAS POR CONVENIO", marginLeft, yPosition, { align: "left" });
+    doc.text("CANTIDAD DE PERSONAS POR CONVENIO", marginLeft, yPosition, { align: "left" });
     doc.setFont("helvetica", "normal");
     yPosition += 4;
 
     personasPorConvenio.forEach((item) => {
-      doc.text(`${item.convenio}: ${item.cantidad} personas`, marginLeft, yPosition, { align: "left" });
+      // si en ote.convenio es Estadia entonces dias, si no persona
+
+      if (item.convenio.includes('PCD')) {
+        const index = item.convenio.indexOf('-')
+        item.convenio = item.convenio.substring(0, index - 1)
+      }
+
+      if (item.convenio.includes('Turno')) {
+        const index = item.convenio.indexOf('-')
+        item.convenio = item.convenio.substring(0, index - 1)
+        turnos.push(item)
+        return
+      }
+      let type_i = 'personas'
+      if (item.convenio.includes('Estadia')) {
+        type_i = 'estadias'
+        //sacar lo que esta despues del guion
+        const index = item.convenio.indexOf('-')
+        item.convenio = item.convenio.substring(0, index - 1)
+        estadias.push(item)
+      } else {
+        doc.text(`${item.convenio}: ${item.cantidad} ${type_i}`, marginLeft, yPosition, { align: "left" });
+      }
       yPosition += 3;
     });
-
-    yPosition += 3;
 
     // Línea separadora
     doc.setDrawColor(200, 200, 200);
     doc.setLineWidth(0.3);
     doc.line(marginLeft, yPosition, marginLeft + contentWidth, yPosition);
     yPosition += 4;
+
+
+    // cantidad de estadias
+    if (estadias.length > 0) {
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "bold");
+      doc.text("CANTIDAD DE ESTADIAS", marginLeft, yPosition, { align: "left" });
+      doc.setFont("helvetica", "normal");
+      yPosition += 4;
+
+      estadias.forEach((item) => {
+        doc.text(`${item.convenio}: ${item.cantidad} estadias`, marginLeft, yPosition, { align: "left" });
+        yPosition += 3;
+      });
+
+      yPosition += 3;
+
+      // Línea separadora
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.3);
+      doc.line(marginLeft, yPosition, marginLeft + contentWidth, yPosition);
+      yPosition += 4;
+    }
+
+    yPosition += 3;
+
+    // cantidad de turnos
+    if (turnos.length > 0) {
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "bold");
+      doc.text("CANTIDAD DE TURNOS", marginLeft, yPosition, { align: "left" });
+      doc.setFont("helvetica", "normal");
+      yPosition += 4;
+
+      turnos.forEach((item) => {
+        doc.text(`${item.convenio}: ${item.cantidad} turnos`, marginLeft, yPosition, { align: "left" });
+        yPosition += 3;
+      });
+
+      yPosition += 3;
+
+      // Línea separadora
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.3);
+      doc.line(marginLeft, yPosition, marginLeft + contentWidth, yPosition);
+      yPosition += 4;
+    }
+
+    yPosition += 3;
+
+    // Línea separadora
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.5);
+    doc.line(marginLeft, yPosition, marginLeft + contentWidth, yPosition);
+    yPosition += 5;
   }
-
-  // Resumen por Convenio
-  // doc.setFontSize(7);
-  // doc.setFont("helvetica", "bold");
-  // doc.text("ENTRADAS POR CONVENIO", marginLeft, yPosition, { align: "left" });
-  // doc.setFont("helvetica", "normal");
-  // yPosition += 4;
-
-  // resumenConvenios.forEach((convenio) => {
-  //   const montoFormateado = Math.round(convenio.monto).toLocaleString('es-AR', {
-  //     minimumFractionDigits: 0,
-  //     maximumFractionDigits: 0
-  //   });
-  //   doc.text(`${convenio.convenio}: ${convenio.cantidad} entradas - $${montoFormateado}`, marginLeft, yPosition, { align: "left" });
-  //   yPosition += 3;
-  // });
-
-  yPosition += 3;
-
-  // Línea separadora
-  doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(0.5);
-  doc.line(marginLeft, yPosition, marginLeft + contentWidth, yPosition);
-  yPosition += 5;
 
   // Cierre Final
   doc.setFontSize(8);

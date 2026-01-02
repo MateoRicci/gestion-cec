@@ -1,62 +1,51 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "@/utils/axios";
 
-export interface VentaReporteResponse {
-  id: number;
-  monto_total: string;
-  medio_pago_id: number;
-  cliente_id: string;
-  usuario_vendedor_id: number;
-  punto_venta_id: number;
-  estado_venta_id: number;
+export interface VentaReporteItem {
+  producto_id: number;
+  producto: string;
   tipo_convenio_id: number | null;
-  created_at: string;
-  updated_at: string;
-  deleted_at: string | null;
-  total_detalles_convenio: number;
-  total_detalles_sin_convenio: number;
-  tipo_convenio: {
-    id: number;
-    nombre: string;
-  } | null;
-  estado: {
-    id: number;
-    nombre: string;
-  };
-  cliente: {
-    id: string;
-    persona_id: string;
-    persona: {
-      id: string;
-      nombre: string;
-      apellido: string;
-    };
-  };
+  tipo_convenio: string | null;
+  total_vendidos: number;
+  total_padron: string | number;
+  total_fuera_padron: string | number;
 }
 
-export interface IngresoPorConvenio {
-  convenio: string;
+export interface DetalleProducto {
+  producto: string;
   cantidad: number;
+  monto: number;
+}
+
+export interface ReporteGroup {
+  convenio: string;
+  detalles: DetalleProducto[];
+  totalCantidad: number;
+  totalMonto: number;
 }
 
 interface UseReporteIngresosReturn {
-  ingresosPorConvenio: IngresoPorConvenio[];
+  reporteGroups: ReporteGroup[];
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
 }
 
+const PRECIO_CONVENIO = 0;
+const PRECIO_CONVENIO_EMPLEADOS = 4000;
+const PRECIO_SIN_CONVENIO = 5000;
+
 export function useReporteIngresos(
   fechaDesde: string | null,
   fechaHasta: string | null
 ): UseReporteIngresosReturn {
-  const [ingresosPorConvenio, setIngresosPorConvenio] = useState<IngresoPorConvenio[]>([]);
+  const [reporteGroups, setReporteGroups] = useState<ReporteGroup[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchReporte = useCallback(async () => {
     if (!fechaDesde || !fechaHasta) {
-      setIngresosPorConvenio([]);
+      setReporteGroups([]);
       return;
     }
 
@@ -64,8 +53,8 @@ export function useReporteIngresos(
     setError(null);
 
     try {
-      const response = await axios.get<VentaReporteResponse[]>(
-        `/api/ventas`,
+      const response = await axios.get<VentaReporteItem[]>(
+        `/api/ventas/reporte`,
         {
           params: {
             fecha_desde: fechaDesde,
@@ -74,45 +63,85 @@ export function useReporteIngresos(
         }
       );
 
-      // Agrupar por convenio (similar a useCajaActions)
-      const personasPorConvenioMap = new Map<string, number>();
+      // Agrupación: Map<NombreConvenio, Map<NombreProducto, {cantidad, monto}>>
+      const groupsMap = new Map<string, Map<string, { cantidad: number; monto: number }>>();
 
-      response.data
-        .filter((venta) => venta.estado?.nombre !== "Cancelada")
-        .forEach((venta) => {
-          // Procesar total_detalles_convenio
-          const cantidadConvenio = parseInt(venta.total_detalles_convenio.toString()) || 0;
-          if (cantidadConvenio > 0) {
-            const nombreConvenio = venta.tipo_convenio?.nombre || "Sin Convenio";
-            const current = personasPorConvenioMap.get(nombreConvenio) || 0;
-            personasPorConvenioMap.set(nombreConvenio, current + cantidadConvenio);
-          }
-
-          // Procesar total_detalles_sin_convenio -> sumar a "No Afiliados"
-          const cantidadSinConvenio = parseInt(venta.total_detalles_sin_convenio.toString()) || 0;
-          if (cantidadSinConvenio > 0) {
-            const current = personasPorConvenioMap.get("No Afiliados") || 0;
-            personasPorConvenioMap.set("No Afiliados", current + cantidadSinConvenio);
-          }
+      const addToGroup = (convenio: string, producto: string, cantidad: number, monto: number) => {
+        if (!groupsMap.has(convenio)) {
+          groupsMap.set(convenio, new Map());
+        }
+        const productosMap = groupsMap.get(convenio)!;
+        const current = productosMap.get(producto) || { cantidad: 0, monto: 0 };
+        productosMap.set(producto, {
+          cantidad: current.cantidad + cantidad,
+          monto: current.monto + monto
         });
+      };
 
-      // Convertir a array y ordenar (No Afiliados al final)
-      const ingresos = Array.from(personasPorConvenioMap.entries())
-        .map(([convenio, cantidad]) => ({
+      response.data.forEach((item) => {
+        const producto = item.producto;
+        const nombreConvenio = item.tipo_convenio;
+        const totalPadron = parseInt(String(item.total_padron)) || 0;
+        const totalFueraPadron = parseInt(String(item.total_fuera_padron)) || 0;
+
+        // 1. Procesar "Sin Convenio" (fuera_padron)
+        if (totalFueraPadron > 0) {
+          let precio = PRECIO_SIN_CONVENIO;
+          if (producto.toLowerCase().includes("menor")) {
+            precio = 0;
+          }
+          addToGroup(
+            "Sin Convenio",
+            producto,
+            totalFueraPadron,
+            totalFueraPadron * precio
+          );
+        }
+
+        // 2. Procesar con Convenio (padron)
+        if (totalPadron > 0 && nombreConvenio) {
+          let precio = PRECIO_CONVENIO;
+          if (nombreConvenio.toLowerCase().includes("empleado cec")) {
+            precio = PRECIO_CONVENIO_EMPLEADOS;
+          }
+          if (producto.toLowerCase().includes("menor")) {
+            precio = 0;
+          }
+          addToGroup(
+            nombreConvenio,
+            producto,
+            totalPadron,
+            totalPadron * precio
+          );
+        }
+      });
+
+      // Convertir Map a Array de ReporteGroup
+      const result: ReporteGroup[] = Array.from(groupsMap.entries()).map(([convenio, productosMap]) => {
+        const detalles = Array.from(productosMap.entries()).map(([producto, data]) => ({
+          producto,
+          cantidad: data.cantidad,
+          monto: data.monto
+        }));
+
+        return {
           convenio,
-          cantidad,
-        }))
-        .sort((a, b) => {
-          if (a.convenio === "No Afiliados") return 1;
-          if (b.convenio === "No Afiliados") return -1;
-          return a.convenio.localeCompare(b.convenio);
-        });
+          detalles,
+          totalCantidad: detalles.reduce((sum, d) => sum + d.cantidad, 0),
+          totalMonto: detalles.reduce((sum, d) => sum + d.monto, 0)
+        };
+      }).sort((a, b) => {
+        // "Sin Convenio" al final
+        if (a.convenio === "Sin Convenio") return 1;
+        if (b.convenio === "Sin Convenio") return -1;
+        return a.convenio.localeCompare(b.convenio);
+      });
 
-      setIngresosPorConvenio(ingresos);
+      setReporteGroups(result);
     } catch (err: any) {
       console.error("Error al obtener reporte de ingresos:", err);
       setError(err?.message || "Error al obtener reporte de ingresos");
-      setIngresosPorConvenio([]);
+      setReporteGroups([]);
     } finally {
       setLoading(false);
     }
@@ -122,11 +151,11 @@ export function useReporteIngresos(
     fetchReporte();
   }, [fetchReporte]);
 
+  // Wrapper para compatibilidad si fuera necesario, pero mejor retornamos la nueva estructura
   return {
-    ingresosPorConvenio,
+    reporteGroups,
     loading,
     error,
     refetch: fetchReporte,
   };
 }
-

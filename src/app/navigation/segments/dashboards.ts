@@ -28,10 +28,20 @@ export const dashboards: NavigationTree = {
     {
       id: "dashboards.reportes",
       path: path(ROOT_DASHBOARDS, "/reportes"),
-      type: "item",
+      type: "collapse",
       title: "Reportes",
       transKey: "nav.dashboards.reportes",
       icon: "dashboards.reportes",
+      childs: [
+        {
+          id: "dashboards.reportes",
+          path: path(ROOT_DASHBOARDS, "/reportes/entradas"),
+          type: "item",
+          title: "Entradas Predio",
+          transKey: "nav.dashboards.reportes.entradas",
+          icon: "dashboards.reportes",
+        },
+      ],
     },
     {
       id: "dashboards.configuraciones",

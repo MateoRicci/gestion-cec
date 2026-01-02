@@ -321,11 +321,17 @@ export function useCajaActions(
           // Clave compuesta: Producto - Sin Convenio
           const key = `${producto} - Sin Convenio`;
 
+          let precio = PRECIO_SIN_CONVENIO;
+          // Si es entrada de menores, el precio es 0
+          if (producto.toLowerCase().includes("menor")) {
+            precio = 0;
+          }
+
           // Guardar en mapa de montos (para resumenConvenios)
           const current = conveniosMap.get(key) || { cantidad: 0, monto: 0 };
           conveniosMap.set(key, {
             cantidad: current.cantidad + totalFueraPadron,
-            monto: current.monto + (totalFueraPadron * PRECIO_SIN_CONVENIO),
+            monto: current.monto + (totalFueraPadron * precio),
           });
 
           // Guardar en mapa de personas (para personasPorConvenio)
@@ -341,6 +347,10 @@ export function useCajaActions(
           let precio = PRECIO_CONVENIO;
           if (nombreConvenio.toLowerCase().includes("empleado cec")) {
             precio = PRECIO_CONVENIO_EMPLEADOS;
+          }
+          // Si es entrada de menores, el precio siempre es 0 (override)
+          if (producto.toLowerCase().includes("menor")) {
+            precio = 0;
           }
 
           // Guardar en mapa de montos (para resumenConvenios)
@@ -390,9 +400,9 @@ export function useCajaActions(
       // 1) Cerrar caja en backend
       // 2) Refrescar estado en frontend
       // 3) Marcar caja como cerrada en el contexto
-      await axios.patch(`/api/cajas/${cajaId}/cerrar`);
-      await refreshCajaEstado();
-      setCajaAbierta(false);
+      // await axios.patch(`/api/cajas/${cajaId}/cerrar`);
+      // await refreshCajaEstado();
+      // setCajaAbierta(false);
 
       // 4) Una vez que el cierre se realizó correctamente, generar el ticket
       await generateTicketCierre({

@@ -63,6 +63,26 @@ const protectedRoutes: RouteObject = {
                   ),
                 };
               },
+              children: [
+                {
+                  index: true,
+                  element: <Navigate to="/dashboards/reportes/entradas" />,
+                },
+                {
+                  path: "entradas",
+                  lazy: async () => {
+                    const ReportesPage = (await import("@/app/pages/dashboards/reportes"))
+                      .default;
+                    return {
+                      Component: () => (
+                        <RoleGuard requiredModule="dashboards.reportes">
+                          <ReportesPage />
+                        </RoleGuard>
+                      ),
+                    };
+                  },
+                },
+              ],
             },
             {
               path: "configuraciones",

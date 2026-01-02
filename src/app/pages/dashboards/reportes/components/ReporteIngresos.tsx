@@ -15,7 +15,7 @@ export function ReporteIngresos() {
   const [fechaDesde, setFechaDesde] = useState<string>(getTodayDate());
   const [fechaHasta, setFechaHasta] = useState<string>(getTodayDate());
 
-  const { ingresosPorConvenio, loading, error } = useReporteIngresos(
+  const { reporteGroups, loading, error } = useReporteIngresos(
     fechaDesde,
     fechaHasta
   );
@@ -44,16 +44,29 @@ export function ReporteIngresos() {
     }
   };
 
-  const totalPersonas = ingresosPorConvenio.reduce(
-    (sum, item) => sum + item.cantidad,
+  const totalPersonas = reporteGroups.reduce(
+    (sum, group) => sum + group.totalCantidad,
     0
   );
+
+  const totalMonto = reporteGroups.reduce(
+    (sum, group) => sum + group.totalMonto,
+    0
+  );
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("es-AR", {
+      style: "currency",
+      currency: "ARS",
+      minimumFractionDigits: 0,
+    }).format(value);
+  };
 
   return (
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-dark-50 mb-4">
-          Reporte de Ingresos al Predio
+          Entradas Predio
         </h3>
         <p className="text-sm text-gray-600 dark:text-dark-300 mb-6">
           Visualiza la cantidad de personas que ingresaron al predio agrupadas por tipo de convenio
@@ -108,40 +121,76 @@ export function ReporteIngresos() {
         </div>
       )}
 
-      {!loading && !error && ingresosPorConvenio.length > 0 && (
+      {!loading && !error && reporteGroups.length > 0 && (
         <div className="bg-white dark:bg-dark-800 rounded-lg border border-gray-200 dark:border-dark-600 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-dark-600">
               <thead className="bg-gray-50 dark:bg-dark-700">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-dark-300 uppercase tracking-wider">
-                    Tipo de Convenio
+                    Convenio / Producto
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-dark-300 uppercase tracking-wider">
-                    Cantidad de Personas
+                    Cantidad
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-dark-300 uppercase tracking-wider">
+                    Monto
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-dark-800 divide-y divide-gray-200 dark:divide-dark-600">
-                {ingresosPorConvenio.map((item, index) => (
-                  <tr
-                    key={index}
-                    className="hover:bg-gray-50 dark:hover:bg-dark-700 transition-colors"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-dark-50">
-                      {item.convenio}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-dark-300 text-right">
-                      {item.cantidad}
-                    </td>
-                  </tr>
+                {reporteGroups.map((group, groupIndex) => (
+                  <>
+                    {/* Encabezado del Grupo (Convenio) */}
+                    <tr key={`group-${groupIndex}`} className="bg-gray-50/50 dark:bg-dark-700/50">
+                      <td colSpan={3} className="px-6 py-3 text-sm font-bold text-gray-900 dark:text-dark-50">
+                        {group.convenio}
+                      </td>
+                    </tr>
+
+                    {/* Detalles (Productos) */}
+                    {group.detalles.map((detalle, detIndex) => (
+                      <tr
+                        key={`det-${groupIndex}-${detIndex}`}
+                        className="hover:bg-gray-50 dark:hover:bg-dark-700 transition-colors"
+                      >
+                        <td className="px-6 py-3 pl-10 text-sm text-gray-600 dark:text-dark-200">
+                          {detalle.producto}
+                        </td>
+                        <td className="px-6 py-3 text-sm text-gray-600 dark:text-dark-200 text-right">
+                          {detalle.cantidad}
+                        </td>
+                        <td className="px-6 py-3 text-sm text-gray-600 dark:text-dark-200 text-right">
+                          {formatCurrency(detalle.monto)}
+                        </td>
+                      </tr>
+                    ))}
+
+                    {/* Subtotal del Grupo (Opcional, pero util) */}
+                    <tr className="border-t border-gray-100 dark:border-dark-700">
+                      <td className="px-6 py-2 pl-10 text-xs font-bold text-gray-500 dark:text-dark-300 text-right">
+                        Subtotal {group.convenio}
+                      </td>
+                      <td className="px-6 py-2 text-xs font-bold text-gray-900 dark:text-dark-50 text-right">
+                        {group.totalCantidad}
+                      </td>
+                      <td className="px-6 py-2 text-xs font-bold text-gray-900 dark:text-dark-50 text-right">
+                        {formatCurrency(group.totalMonto)}
+                      </td>
+                    </tr>
+                  </>
                 ))}
-                <tr className="bg-gray-50 dark:bg-dark-700 font-semibold">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-dark-50">
-                    Total
+
+                {/* Total General */}
+                <tr className="bg-gray-100 dark:bg-dark-700 font-bold border-t-2 border-gray-200 dark:border-dark-500">
+                  <td className="px-6 py-4 text-sm text-gray-900 dark:text-dark-50">
+                    Total General
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-dark-50 text-right">
+                  <td className="px-6 py-4 text-sm text-gray-900 dark:text-dark-50 text-right">
                     {totalPersonas}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900 dark:text-dark-50 text-right">
+                    {formatCurrency(totalMonto)}
                   </td>
                 </tr>
               </tbody>
@@ -150,7 +199,7 @@ export function ReporteIngresos() {
         </div>
       )}
 
-      {!loading && !error && ingresosPorConvenio.length === 0 && fechaDesde && fechaHasta && (
+      {!loading && !error && reporteGroups.length === 0 && fechaDesde && fechaHasta && (
         <div className="text-center py-8">
           <p className="text-gray-600 dark:text-dark-300">
             No se encontraron ingresos para el rango de fechas seleccionado.
