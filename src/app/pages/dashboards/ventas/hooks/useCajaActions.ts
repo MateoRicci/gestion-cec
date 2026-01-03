@@ -291,10 +291,14 @@ export function useCajaActions(
       }
 
       // Procesar resumen por convenio
+      // Procesar resumen por convenio
       // Precios fijos por tipo de entrada
       const PRECIO_CONVENIO = 0; // Entradas con convenio: $0
       const PRECIO_CONVENIO_EMPLEADOS = 4000;
       const PRECIO_SIN_CONVENIO = 5000; // Entradas sin convenio: $5000
+      const PRECIO_CARPA = 15000;
+      const PRECIO_MOTORHOME = 25000;
+      const PRECIO_TURNO_FUTBOL = 35000;
 
       // 5. Obtener reporte pre-calculado por producto y convenio
       let reporteData: any[] = [];
@@ -308,7 +312,26 @@ export function useCajaActions(
       const conveniosMap = new Map<string, { cantidad: number; monto: number }>();
       const personasPorConvenioMap = new Map<string, number>();
 
+      // Helper para determinar precio (mismo que en useReporteIngresos)
+      const getPrecio = (prodName: string, convenioName: string | null, isPadron: boolean) => {
+        const lowerProd = prodName.toLowerCase();
+        const lowerConv = convenioName?.toLowerCase() || "";
 
+        // 1. Precios específicos por producto (tienen prioridad)
+        if (lowerProd.includes("carpa")) return PRECIO_CARPA;
+        if (lowerProd.includes("motorhome") || lowerProd.includes("casilla")) return PRECIO_MOTORHOME;
+        if (lowerProd.includes("turno")) return PRECIO_TURNO_FUTBOL;
+        if (lowerProd.includes("menor") || lowerProd.includes("pcd")) return 0;
+
+        // 2. Precios por convenio
+        if (isPadron && convenioName) {
+          if (lowerConv.includes("empleado cec")) return PRECIO_CONVENIO_EMPLEADOS;
+          return PRECIO_CONVENIO; // Default convenio
+        }
+
+        // 3. Default sin convenio
+        return PRECIO_SIN_CONVENIO;
+      };
 
       reporteData.forEach((item: any) => {
         const producto = item.producto;
@@ -320,12 +343,7 @@ export function useCajaActions(
         if (totalFueraPadron > 0) {
           // Clave compuesta: Producto - Sin Convenio
           const key = `${producto} - Sin Convenio`;
-
-          let precio = PRECIO_SIN_CONVENIO;
-          // Si es entrada de menores, el precio es 0
-          if (producto.toLowerCase().includes("menor")) {
-            precio = 0;
-          }
+          const precio = getPrecio(producto, null, false);
 
           // Guardar en mapa de montos (para resumenConvenios)
           const current = conveniosMap.get(key) || { cantidad: 0, monto: 0 };
@@ -343,15 +361,7 @@ export function useCajaActions(
         if (totalPadron > 0 && nombreConvenio) {
           // Clave compuesta: Producto - Convenio
           const key = `${producto} - ${nombreConvenio}`;
-
-          let precio = PRECIO_CONVENIO;
-          if (nombreConvenio.toLowerCase().includes("empleado cec")) {
-            precio = PRECIO_CONVENIO_EMPLEADOS;
-          }
-          // Si es entrada de menores, el precio siempre es 0 (override)
-          if (producto.toLowerCase().includes("menor")) {
-            precio = 0;
-          }
+          const precio = getPrecio(producto, nombreConvenio, true);
 
           // Guardar en mapa de montos (para resumenConvenios)
           const current = conveniosMap.get(key) || { cantidad: 0, monto: 0 };

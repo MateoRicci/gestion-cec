@@ -34,6 +34,9 @@ interface UseReporteIngresosReturn {
 const PRECIO_CONVENIO = 0;
 const PRECIO_CONVENIO_EMPLEADOS = 4000;
 const PRECIO_SIN_CONVENIO = 5000;
+const PRECIO_CARPA = 15000;
+const PRECIO_MOTORHOME = 25000;
+const PRECIO_TURNO_FUTBOL = 35000;
 
 export function useReporteIngresos(
   fechaDesde: string | null,
@@ -99,17 +102,30 @@ export function useReporteIngresos(
 
         const specialGroup = getSpecialGroup(producto);
 
-        // 1. Procesar "Sin Convenio" (fuera_padron)
-        if (totalFueraPadron > 0) {
-          let precio = PRECIO_SIN_CONVENIO;
-          if (producto.toLowerCase().includes("menor")) {
-            precio = 0;
-          }
-          if (producto.toLowerCase().includes("pcd")) {
-            precio = 0;
+        // Helper para determinar precio
+        const getPrecio = (prodName: string, convenioName: string | null, isPadron: boolean) => {
+          const lowerProd = prodName.toLowerCase();
+          const lowerConv = convenioName?.toLowerCase() || "";
+
+          // 1. Precios específicos por producto (tienen prioridad)
+          if (lowerProd.includes("carpa")) return PRECIO_CARPA;
+          if (lowerProd.includes("motorhome") || lowerProd.includes("casilla")) return PRECIO_MOTORHOME;
+          if (lowerProd.includes("turno")) return PRECIO_TURNO_FUTBOL;
+          if (lowerProd.includes("menor") || lowerProd.includes("pcd")) return 0;
+
+          // 2. Precios por convenio
+          if (isPadron && convenioName) {
+            if (lowerConv.includes("empleado cec")) return PRECIO_CONVENIO_EMPLEADOS;
+            return PRECIO_CONVENIO; // Default convenio
           }
 
-          // Si es grupo especial, usalo como convenio, sino "Sin Convenio"
+          // 3. Default sin convenio
+          return PRECIO_SIN_CONVENIO;
+        };
+
+        // 1. Procesar "Sin Convenio" (fuera_padron)
+        if (totalFueraPadron > 0) {
+          const precio = getPrecio(producto, null, false);
           const groupName = specialGroup || "Sin Convenio";
 
           addToGroup(
@@ -122,21 +138,7 @@ export function useReporteIngresos(
 
         // 2. Procesar con Convenio (padron)
         if (totalPadron > 0 && nombreConvenio) {
-          let precio = PRECIO_CONVENIO;
-          if (nombreConvenio.toLowerCase().includes("empleado cec")) {
-            precio = PRECIO_CONVENIO_EMPLEADOS;
-          }
-          if (producto.toLowerCase().includes("menor")) {
-            precio = 0;
-          }
-          if (producto.toLowerCase().includes("pcd")) {
-            precio = 0;
-          }
-
-          // Si es grupo especial, usalo como convenio, sino el nombre del convenio real
-          // ¿Deberíamos separar estadias/turnos AUNQUE tengan convenio? 
-          // El requerimiento dice "separar ... detectando si el nombre contiene Estadia o Turno".
-          // Asumiré que sí, queremos agruparlos por tipo de producto (Estadia/Turno) ignorando el convenio original para la visualización.
+          const precio = getPrecio(producto, nombreConvenio, true);
           const groupName = specialGroup || nombreConvenio;
 
           addToGroup(
