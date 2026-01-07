@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { DatePicker } from "@/components/shared/form/Datepicker";
-import { Listbox } from "@/components/shared/form/StyledListbox";
-import { useCajasRange, Caja } from "../hooks/useCajasRange";
+import { Combobox } from "@/components/shared/form/StyledCombobox";
+import { useAllCajas, CajaListItem } from "../hooks/useAllCajas";
 import { useReporteMovimientosCajas } from "../hooks/useReporteMovimientosCajas";
+import { Caja } from "../hooks/useCajasRange";
 
 // Formatters fuera del render para mejor performance
 const currencyFormatter = new Intl.NumberFormat("es-AR", {
@@ -28,66 +28,42 @@ function formatDate(dateString: string): string {
     return dateFormatter.format(date);
 }
 
-export function ReporteMovimientosCajas() {
-    const getTodayDate = () => {
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, "0");
-        const day = String(today.getDate()).padStart(2, "0");
-        return `${year}-${month}-${day}`;
+// Convertir CajaListItem a Caja para el hook de movimientos
+function toCaja(item: CajaListItem): Caja {
+    return {
+        id: item.id,
+        nombre: item.nombre,
+        descripcion: item.descripcion,
+        usuario_id: item.usuario_id,
+        punto_venta_id: item.punto_venta_id,
+        fecha_apertura: item.fecha_apertura,
+        fecha_cierre: item.fecha_cierre,
+        created_at: item.created_at,
+        updated_at: item.updated_at,
+        deleted_at: item.deleted_at,
+        usuario: item.usuario,
     };
+}
 
-    const [fechaDesde, setFechaDesde] = useState<string>(getTodayDate());
-    const [fechaHasta, setFechaHasta] = useState<string>(getTodayDate());
-    const [selectedCaja, setSelectedCaja] = useState<Caja | null>(null);
+export function ReporteMovimientosCajas() {
+    const [selectedCajaItem, setSelectedCajaItem] = useState<CajaListItem | null>(null);
 
-    const { cajas } = useCajasRange(fechaDesde, fechaHasta);
+    const { cajas, loading: loadingCajas } = useAllCajas();
+
+    // Convertir a Caja para el hook de movimientos
+    const selectedCaja = selectedCajaItem ? toCaja(selectedCajaItem) : null;
+
     const { movimientos, ingresos, egresos, total, loading, error, generarTicket, generandoTicket } =
         useReporteMovimientosCajas(selectedCaja);
 
-    // Opciones para el selector de caja
-    const cajaOptions = [
-        { id: 0, label: "Seleccionar caja" },
-        ...cajas.map((caja: Caja) => ({
-            id: caja.id,
-            label: `${caja.descripcion} - ${caja.usuario.persona.nombre} ${caja.usuario.persona.apellido}`,
-            value: caja,
-        })),
-    ];
+    // Preparar datos para el Combobox con label para búsqueda
+    const cajasData = cajas.map((caja) => ({
+        ...caja,
+        label: `${caja.descripcion} - ${caja.usuario.persona.nombre} ${caja.usuario.persona.apellido}`,
+    }));
 
-    const handleCajaChange = (option: any) => {
-        if (option.id === 0) {
-            setSelectedCaja(null);
-        } else {
-            setSelectedCaja(option.value);
-        }
-    };
-
-    const fechaDesdeDate = fechaDesde ? new Date(fechaDesde + "T00:00:00") : new Date();
-    const fechaHastaDate = fechaHasta ? new Date(fechaHasta + "T00:00:00") : new Date();
-
-    const handleFechaDesdeChange = (selectedDates: Date[]) => {
-        if (selectedDates && selectedDates.length > 0) {
-            const date = selectedDates[0];
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, "0");
-            const day = String(date.getDate()).padStart(2, "0");
-            setFechaDesde(`${year}-${month}-${day}`);
-            // Reset caja al cambiar fecha
-            setSelectedCaja(null);
-        }
-    };
-
-    const handleFechaHastaChange = (selectedDates: Date[]) => {
-        if (selectedDates && selectedDates.length > 0) {
-            const date = selectedDates[0];
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, "0");
-            const day = String(date.getDate()).padStart(2, "0");
-            setFechaHasta(`${year}-${month}-${day}`);
-            // Reset caja al cambiar fecha
-            setSelectedCaja(null);
-        }
+    const handleCajaChange = (value: any) => {
+        setSelectedCajaItem(value as CajaListItem | null);
     };
 
     return (
@@ -101,49 +77,26 @@ export function ReporteMovimientosCajas() {
                 </p>
             </div>
 
-            {/* Selectores de fecha y caja */}
-            <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-dark-200 mb-2">
-                        Desde
-                    </label>
-                    <DatePicker
-                        value={fechaDesdeDate}
-                        onChange={handleFechaDesdeChange}
-                        options={{
-                            dateFormat: "d-m-Y",
-                            maxDate: new Date(),
-                        }}
-                        placeholder="Desde"
-                        className="w-full"
-                    />
-                </div>
-                <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-dark-200 mb-2">
-                        Hasta
-                    </label>
-                    <DatePicker
-                        value={fechaHastaDate}
-                        onChange={handleFechaHastaChange}
-                        options={{
-                            dateFormat: "d-m-Y",
-                            maxDate: new Date(),
-                            minDate: fechaDesdeDate,
-                        }}
-                        placeholder="Hasta"
-                        className="w-full"
-                    />
-                </div>
-                <div className="flex-1">
-                    <Listbox
-                        label="Caja"
-                        data={cajaOptions}
-                        displayField="label"
-                        value={selectedCaja ? cajaOptions.find((opt) => opt.id === selectedCaja.id) : cajaOptions[0]}
-                        onChange={handleCajaChange}
-                        placeholder="Seleccionar caja"
-                    />
-                </div>
+            {/* Selector de caja con búsqueda */}
+            <div className="max-w-md">
+                <Combobox
+                    label="Seleccionar Caja"
+                    data={cajasData}
+                    displayField="label"
+                    searchFields={["label", "descripcion"]}
+                    value={selectedCajaItem}
+                    onChange={handleCajaChange}
+                    placeholder={loadingCajas ? "Cargando cajas..." : "Buscar caja..."}
+                    highlight
+                    inputProps={{
+                        onKeyDown: (e: React.KeyboardEvent) => {
+                            // Permitir espacios en el input de búsqueda
+                            if (e.key === " ") {
+                                e.stopPropagation();
+                            }
+                        }
+                    }}
+                />
             </div>
 
             {/* Botón generar ticket */}
@@ -284,8 +237,8 @@ export function ReporteMovimientosCajas() {
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <span
                                                     className={`text-xs px-2 py-1 rounded ${isPositivo
-                                                            ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
-                                                            : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
+                                                        ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
+                                                        : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
                                                         }`}
                                                 >
                                                     {mov.tipoMovimientoNombre || "Movimiento"}
