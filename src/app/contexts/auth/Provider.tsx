@@ -26,12 +26,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const init = async () => {
       try {
-        // Si hay usuario persistido, asumimos que está autenticado (la cookie se verifica en cada request)
-        // Si no hay usuario persistido, el usuario no está autenticado
+        // Si hay usuario persistido, verificar que la sesión sigue válida
         if (user && isAuthenticated) {
-          // Usuario ya persistido, mantener autenticado
-          setInitialized(true);
-          return;
+          try {
+            // Hacer una request al backend para validar que la cookie/sesión sigue válida
+            // Si el token está vencido, el backend responderá 401 y el interceptor de axios
+            // manejará el logout y redirección automáticamente
+            await axios.get("/api/empleados/me");
+
+            // Si la request fue exitosa, la sesión es válida
+            setInitialized(true);
+            return;
+          } catch (error: any) {
+            // Si es error 401, el interceptor de axios ya manejó el logout y redirección
+            // Solo necesitamos evitar continuar con la inicialización
+            if (error?.response?.status === 401) {
+              return; // El interceptor ya está redirigiendo
+            }
+
+            // Para otros errores (red, servidor caído, etc.), mantener el estado actual
+            // para permitir que el usuario vea la app mientras se resuelve
+            console.warn("Error al verificar sesión:", error);
+            setInitialized(true);
+            return;
+          }
         }
 
         // Si no hay usuario persistido, no está autenticado
@@ -82,21 +100,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           method: err?.config?.method,
         }
       });
-      
+
       let errorMessage = "Login failed";
-      
+
       if (err?.response?.status === 404) {
         errorMessage = "Endpoint no encontrado. Verifica la URL del backend.";
       } else if (err?.code === "ERR_NETWORK" || err?.message?.includes("CORS") || err?.code === "ERR_CORS") {
         errorMessage = "Error de conexión. El backend no permite solicitudes CORS desde este origen. El backend debe configurar los headers CORS.";
       } else if (err?.response?.data) {
-        errorMessage = typeof err.response.data === "string" 
-          ? err.response.data 
+        errorMessage = typeof err.response.data === "string"
+          ? err.response.data
           : err.response.data.message || JSON.stringify(err.response.data);
       } else if (err?.message) {
         errorMessage = err.message;
       }
-      
+
       setErrorMessage(errorMessage);
       setLoading(false);
     }
@@ -111,13 +129,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("Error al hacer logout:", err);
       // Continuar con el logout local aunque falle el backend
     }
-    
+
     // Limpiar localStorage completamente
     localStorage.clear();
-    
+
     // Limpiar el store de Zustand (esto también limpia su parte del localStorage)
     logoutStore();
-    
+
     // Redirigir al login después de cerrar sesión
     window.location.href = "/login";
   };

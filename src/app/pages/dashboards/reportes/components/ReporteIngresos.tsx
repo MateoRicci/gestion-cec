@@ -3,6 +3,8 @@ import { DatePicker } from "@/components/shared/form/Datepicker";
 import { Listbox } from "@/components/shared/form/StyledListbox";
 import { useReporteIngresos } from "../hooks/useReporteIngresos";
 import { useCajasRange, Caja } from "../hooks/useCajasRange";
+import { useVentasPorMedioPago } from "../hooks/useVentasPorMedioPago";
+import { generateReporteEntradasPDF } from "@/utils/generateReporteEntradasPDF";
 
 export function ReporteIngresos() {
   // Obtener fecha de hoy en formato YYYY-MM-DD
@@ -36,6 +38,12 @@ export function ReporteIngresos() {
   // Si cajas cambia, verificamos si la caja seleccionada sigue existiendo.
 
   const { reporteGroups, loading, error } = useReporteIngresos(
+    fechaDesde,
+    fechaHasta,
+    selectedCaja?.id ?? null
+  );
+
+  const { ingresosPorMedioPago, loading: loadingMedioPago } = useVentasPorMedioPago(
     fechaDesde,
     fechaHasta,
     selectedCaja?.id ?? null
@@ -102,6 +110,28 @@ export function ReporteIngresos() {
     }).format(value);
   };
 
+  const handleGeneratePDF = async () => {
+    if (!reporteGroups.length) return;
+
+    const cajaInfo = selectedCaja
+      ? {
+        id: selectedCaja.id,
+        descripcion: selectedCaja.descripcion,
+        cajeroNombre: `${selectedCaja.usuario.persona.nombre} ${selectedCaja.usuario.persona.apellido}`,
+      }
+      : null;
+
+    await generateReporteEntradasPDF({
+      fechaDesde,
+      fechaHasta,
+      caja: cajaInfo,
+      reporteGroups,
+      ingresosPorMedioPago,
+      totalPersonas,
+      totalMonto,
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -155,6 +185,27 @@ export function ReporteIngresos() {
             onChange={handleCajaChange}
             placeholder="Seleccionar caja"
           />
+        </div>
+        <div className="flex items-end">
+          <button
+            onClick={handleGeneratePDF}
+            disabled={loading || reporteGroups.length === 0}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors flex items-center gap-2"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V8z"
+                clipRule="evenodd"
+              />
+            </svg>
+            Generar PDF
+          </button>
         </div>
       </div>
 
@@ -298,6 +349,33 @@ export function ReporteIngresos() {
                     {formatCurrency(totalMonto)}
                   </td>
                 </tr>
+
+                {/* Sección de Ingresos por Método de Pago */}
+                {!loadingMedioPago && ingresosPorMedioPago.length > 0 && (
+                  <>
+                    <tr className="bg-blue-100 dark:bg-blue-900/30 border-t-2 border-blue-200 dark:border-blue-800">
+                      <td colSpan={3} className="px-6 py-3 text-sm font-bold text-blue-900 dark:text-blue-100">
+                        MONTOS POR MÉTODO DE PAGO
+                      </td>
+                    </tr>
+                    {ingresosPorMedioPago.map((item) => (
+                      <tr
+                        key={`medio-pago-${item.medioPagoId}`}
+                        className="bg-blue-50/50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                      >
+                        <td className="px-6 py-3 pl-10 text-sm text-gray-700 dark:text-dark-200">
+                          {item.medioPagoNombre}
+                        </td>
+                        <td className="px-6 py-3 text-sm text-gray-700 dark:text-dark-200 text-right">
+                          -
+                        </td>
+                        <td className="px-6 py-3 text-sm text-gray-700 dark:text-dark-200 text-right">
+                          {formatCurrency(item.totalMonto)}
+                        </td>
+                      </tr>
+                    ))}
+                  </>
+                )}
               </tbody>
             </table>
           </div>

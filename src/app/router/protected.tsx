@@ -52,17 +52,6 @@ const protectedRoutes: RouteObject = {
             },
             {
               path: "reportes",
-              lazy: async () => {
-                const ReportesPage = (await import("@/app/pages/dashboards/reportes"))
-                  .default;
-                return {
-                  Component: () => (
-                    <RoleGuard requiredModule="dashboards.reportes">
-                      <ReportesPage />
-                    </RoleGuard>
-                  ),
-                };
-              },
               children: [
                 {
                   index: true,
@@ -77,6 +66,20 @@ const protectedRoutes: RouteObject = {
                       Component: () => (
                         <RoleGuard requiredModule="dashboards.reportes">
                           <ReportesPage />
+                        </RoleGuard>
+                      ),
+                    };
+                  },
+                },
+                {
+                  path: "movimientos-cajas",
+                  lazy: async () => {
+                    const MovimientosCajasPage = (await import("@/app/pages/dashboards/reportes/movimientos-cajas"))
+                      .default;
+                    return {
+                      Component: () => (
+                        <RoleGuard requiredModule="dashboards.reportes">
+                          <MovimientosCajasPage />
                         </RoleGuard>
                       ),
                     };

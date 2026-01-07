@@ -34,11 +34,19 @@ export const dashboards: NavigationTree = {
       icon: "dashboards.reportes",
       childs: [
         {
-          id: "dashboards.reportes",
+          id: "dashboards.reportes.entradas",
           path: path(ROOT_DASHBOARDS, "/reportes/entradas"),
           type: "item",
           title: "Entradas Predio",
           transKey: "nav.dashboards.reportes.entradas",
+          icon: "dashboards.reportes",
+        },
+        {
+          id: "dashboards.reportes.movimientos-cajas",
+          path: path(ROOT_DASHBOARDS, "/reportes/movimientos-cajas"),
+          type: "item",
+          title: "Movimientos Cajas",
+          transKey: "nav.dashboards.reportes.movimientosCajas",
           icon: "dashboards.reportes",
         },
       ],

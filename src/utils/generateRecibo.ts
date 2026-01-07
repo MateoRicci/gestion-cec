@@ -40,15 +40,15 @@ export async function generateRecibo(data: ReciboData): Promise<void> {
   const pageWidth = 79; // Ancho ticketera en mm
   const marginTop = 5;
   const marginBottom = 5;
-  
+
   // Estimación del alto necesario:
   let estimatedHeight = marginTop;
-  
+
   // Logo eliminado - no se incluye en el cálculo
-  
+
   // Encabezado (línea, título, empresa, fecha, número, PV)
   estimatedHeight += 4 + 6 + 10 + 4 + 4 + 4 + 4; // ~36mm
-  
+
   // Cliente (nombre puede ser múltiples líneas) - solo si es afiliado
   const convenioEst = cliente.titular.convenio?.toLowerCase() || "";
   const esAfiliadoEst = !convenioEst.includes("no afiliado") && !convenioEst.includes("consumidor final");
@@ -60,7 +60,7 @@ export async function generateRecibo(data: ReciboData): Promise<void> {
     // Incluir DNI y convenio
     estimatedHeight += 4 + (clienteLines * 3) + 3 + 3 + (convenioLinesEst * 3) + 3 + 4; // ~28-38mm
   }
-  
+
   // Detalle (cada item puede tener múltiples líneas)
   estimatedHeight += 4; // Encabezado DETALLE
   detalleItems.forEach((item) => {
@@ -75,16 +75,16 @@ export async function generateRecibo(data: ReciboData): Promise<void> {
     const productoLines = Math.ceil(nombreProducto.length / 25);
     estimatedHeight += (productoLines * 3) + 4 + 2; // ~10-15mm por item
   });
-  
+
   // Total y pago
   estimatedHeight += 3 + 5 + 6 + 4 + 3 + 6 + 5 + 5; // ~37mm
-  
+
   // Agregar margen de seguridad (20%)
   estimatedHeight = Math.ceil(estimatedHeight * 1.2) + marginBottom;
-  
+
   // Mínimo 100mm, máximo razonable 500mm
   const pageHeight = Math.max(100, Math.min(500, estimatedHeight));
-  
+
   const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",
@@ -118,7 +118,7 @@ export async function generateRecibo(data: ReciboData): Promise<void> {
 
   // Información del emisor (más compacta)
   const nombreEmpresa = "Predio Centro de Empleados de Comercio";
-  
+
   doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
   const empresaLines = doc.splitTextToSize(nombreEmpresa, contentWidth);
@@ -168,10 +168,10 @@ export async function generateRecibo(data: ReciboData): Promise<void> {
     doc.setFont("helvetica", "bold");
     doc.setTextColor(0, 0, 0);
     doc.text("AFILIADO/A", marginLeft, yPosition, { align: "left" });
-    
+
     doc.setFont("helvetica", "normal");
     yPosition += 4;
-    
+
     // Nombre y apellido con etiqueta
     doc.setFont("helvetica", "bold");
     doc.text("Nombre y Apellido:", marginLeft, yPosition, { align: "left" });
@@ -181,10 +181,11 @@ export async function generateRecibo(data: ReciboData): Promise<void> {
     const nombreClienteLines = doc.splitTextToSize(nombreCliente, contentWidth);
     doc.text(nombreClienteLines, marginLeft, yPosition, { align: "left" });
     yPosition += nombreClienteLines.length * 3;
-    
+
     doc.text(`DNI: ${cliente.titular.dni_titular}`, marginLeft, yPosition, { align: "left" });
     yPosition += 3;
-    
+
+
     const convenioLines = doc.splitTextToSize(`Conv: ${cliente.titular.convenio}`, contentWidth);
     doc.text(convenioLines, marginLeft, yPosition, { align: "left" });
     yPosition += convenioLines.length * 3 + 3;
@@ -207,30 +208,38 @@ export async function generateRecibo(data: ReciboData): Promise<void> {
   detalleItems.forEach((item, index) => {
     doc.setFontSize(7);
     doc.setFont("helvetica", "normal");
-    
+
     // Nombre del producto (puede ocupar varias líneas)
     let nombreProducto = item.productoNombre;
-    
+
     // Primero corregir cualquier typo "No Socioes" o "No Afiliadoes" a "No Afiliado"
     nombreProducto = nombreProducto.replace(/no\s+socioes/gi, "No Afiliado");
     nombreProducto = nombreProducto.replace(/no\s+afiliadoes/gi, "No Afiliado");
-    
+
     // Cambiar "No Socio" por "No Afiliado" (antes de otros reemplazos)
     nombreProducto = nombreProducto.replace(/no\s+socio/gi, "No Afiliado");
-    
+
     // Verificar si ya tiene "No Afiliado" para evitar duplicados
     const yaTieneNoAfiliado = nombreProducto.toLowerCase().includes("no afiliado");
-    
+
     // Verificar si es una entrada de afiliado con Mayor o Menor (importante preservar esta distinción)
     const tieneAfiliadoMayor = nombreProducto.toLowerCase().includes("afiliado mayor");
     const tieneAfiliadoMenor = nombreProducto.toLowerCase().includes("afiliado menor");
     const tieneAfiliadoMayorOMenor = tieneAfiliadoMayor || tieneAfiliadoMenor;
-    
+
     // Cambiar "Socio" por "Afiliado" en las entradas de socios (solo si no es "No Afiliado" y no tiene ya "Afiliado Mayor/Menor")
     if (nombreProducto.toLowerCase().includes("socio") && !yaTieneNoAfiliado && !tieneAfiliadoMayorOMenor) {
       nombreProducto = nombreProducto.replace(/socio/gi, "Afiliado");
     }
-    
+
+    // Si el convenio es exactamente "Empleado CEC", cambiar "Afiliado" por "Empleado"
+    const esEmpleadoCEC = cliente.titular.convenio?.trim().toLowerCase() === "empleado cec";
+    if (esEmpleadoCEC && !yaTieneNoAfiliado) {
+      nombreProducto = nombreProducto.replace(/afiliado mayor/gi, "Empleado Mayor");
+      nombreProducto = nombreProducto.replace(/afiliado menor/gi, "Empleado Menor");
+      nombreProducto = nombreProducto.replace(/afiliado/gi, "Empleado");
+    }
+
     // Determinar si es una entrada "no afiliado"
     // Es "no afiliado" si:
     // 1. El nombreLista contiene "no afiliado"
@@ -240,7 +249,7 @@ export async function generateRecibo(data: ReciboData): Promise<void> {
     const nombreListaEsNoAfiliado = item.nombreLista?.toLowerCase().includes("no afiliado");
     const esEntradaManual = esEntrada && (item.afiliadoId === null || item.afiliadoId === undefined);
     const esNoAfiliado = (nombreListaEsNoAfiliado || (esEntradaManual && !yaTieneNoAfiliado)) && !tieneAfiliadoMayorOMenor;
-    
+
     // Si es una entrada "no afiliado" y no lo indica en el nombre, agregarlo
     // PERO solo si NO es una entrada de afiliado con Mayor o Menor
     if (esNoAfiliado && !yaTieneNoAfiliado && !tieneAfiliadoMayorOMenor) {
@@ -261,20 +270,20 @@ export async function generateRecibo(data: ReciboData): Promise<void> {
         nombreProducto = `${nombreProducto} (No Afiliado)`;
       }
     }
-    
+
     // Verificación final: corregir cualquier duplicado o typo que pueda haber quedado
     nombreProducto = nombreProducto.replace(/no\s+afiliado\s+no\s+afiliado/gi, "No Afiliado");
     nombreProducto = nombreProducto.replace(/no\s+afiliadoes/gi, "No Afiliado");
-    
+
     const productoLines = doc.splitTextToSize(nombreProducto, contentWidth);
     doc.text(productoLines, marginLeft, yPosition, { align: "left" });
     yPosition += productoLines.length * 3;
-    
+
     // Cantidad, precio unitario y subtotal en una línea
     const detalleLine = `${item.cantidad} x $${item.precio.toFixed(2)} = $${item.subtotal.toFixed(2)}`;
     doc.text(detalleLine, marginLeft, yPosition, { align: "left" });
     yPosition += 4;
-    
+
     // Línea separadora entre items (excepto el último)
     if (index < detalleItems.length - 1) {
       doc.setDrawColor(220, 220, 220);
@@ -305,7 +314,7 @@ export async function generateRecibo(data: ReciboData): Promise<void> {
   doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
   doc.text("TOTAL A PAGAR:", marginLeft, yPosition, { align: "left" });
-  
+
   doc.setFontSize(11);
   doc.setTextColor(0, 0, 0);
   doc.text(`$${totalFormateado}`, marginLeft + contentWidth, yPosition, { align: "right" });
@@ -325,7 +334,7 @@ export async function generateRecibo(data: ReciboData): Promise<void> {
   doc.text("MEDIO DE PAGO UTILIZADO:", marginLeft, yPosition, { align: "left" });
   doc.setFont("helvetica", "normal");
   yPosition += 3;
-  
+
   // Mostrar el método de pago seleccionado
   doc.text(metodoPago, marginLeft, yPosition, { align: "left" });
   yPosition += 6;
