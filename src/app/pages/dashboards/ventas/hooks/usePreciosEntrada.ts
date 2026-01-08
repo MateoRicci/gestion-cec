@@ -61,6 +61,18 @@ export function usePreciosEntrada() {
         return;
       }
 
+      // Si tenemos precios del convenio, usarlos directamente
+      if (clienteData.preciosConvenio) {
+        setPrecios((prev) => ({
+          ...prev,
+          precioEntradaMayor: clienteData.preciosConvenio!.entradaMayor,
+          precioEntradaMenor: clienteData.preciosConvenio!.entradaMenor,
+          listaPrecioIdSocio: clienteData.preciosConvenio!.listaPrecioId,
+        }));
+        return;
+      }
+
+      // Fallback: cargar precios desde la API (para casos donde no viene lista_precio)
       const convenioNombre = clienteData.titular.convenio || "";
 
       const promises: Promise<void>[] = [];

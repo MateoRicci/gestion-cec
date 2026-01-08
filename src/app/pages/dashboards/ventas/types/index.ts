@@ -3,6 +3,29 @@
  */
 
 // ============================================================================
+// LISTA DE PRECIOS (desde convenio)
+// ============================================================================
+
+export interface ProductoListaPrecio {
+  id: number;
+  nombre: string;
+  precio_unitario: string;
+  tipo_moneda_id: number;
+}
+
+export interface ListaPrecio {
+  id: number;
+  nombre: string;
+  productos: ProductoListaPrecio[];
+}
+
+export interface PreciosConvenio {
+  entradaMayor: number;
+  entradaMenor: number;
+  listaPrecioId: number;
+}
+
+// ============================================================================
 // PRODUCTOS
 // ============================================================================
 
@@ -76,6 +99,7 @@ export interface Titular {
 export interface ClienteData {
   titular: Titular;
   familiares?: Familiar[];
+  preciosConvenio?: PreciosConvenio;
 }
 
 export interface AfiliadoResponse {
@@ -109,6 +133,7 @@ export interface AfiliadoResponse {
     };
     parentesco: string;
   }>;
+  lista_precio?: ListaPrecio[][];
 }
 
 // ============================================================================

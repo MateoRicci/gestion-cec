@@ -2,7 +2,7 @@
  * Servicio para operaciones relacionadas con clientes y afiliados
  */
 import axios from "@/utils/axios";
-import { AfiliadoResponse, ClienteData } from "../types";
+import { AfiliadoResponse, ClienteData, PreciosConvenio } from "../types";
 
 /**
  * Busca un afiliado por DNI
@@ -15,6 +15,47 @@ export async function buscarAfiliadoPorDni(
     `/api/afiliados/buscar-por-documento/${dniBuscado}`
   );
   return response.data;
+}
+
+/**
+ * Extrae los precios de entrada del campo lista_precio
+ * Busca productos que contengan "Mayores" o "Menores" en el nombre
+ */
+function extraerPreciosConvenio(
+  afiliado: AfiliadoResponse
+): PreciosConvenio | undefined {
+  if (!afiliado.lista_precio || afiliado.lista_precio.length === 0) {
+    return undefined;
+  }
+
+  // lista_precio es un array de arrays, tomamos el primer elemento
+  const listasPrecio = afiliado.lista_precio[0];
+  if (!listasPrecio || listasPrecio.length === 0) {
+    return undefined;
+  }
+
+  const listaPrecio = listasPrecio[0];
+  if (!listaPrecio || !listaPrecio.productos) {
+    return undefined;
+  }
+
+  let entradaMayor = 0;
+  let entradaMenor = 0;
+
+  for (const producto of listaPrecio.productos) {
+    const nombreLower = producto.nombre.toLowerCase();
+    if (nombreLower.includes("mayores")) {
+      entradaMayor = parseFloat(producto.precio_unitario) || 0;
+    } else if (nombreLower.includes("menores")) {
+      entradaMenor = parseFloat(producto.precio_unitario) || 0;
+    }
+  }
+
+  return {
+    entradaMayor,
+    entradaMenor,
+    listaPrecioId: listaPrecio.id,
+  };
 }
 
 /**
@@ -45,6 +86,7 @@ export function mapAfiliadoToClienteData(
         familiar.persona.edad_categoria === "menor" ? "menor" : "mayor",
       compro_hoy: familiar.compro_hoy || false,
     })),
+    preciosConvenio: extraerPreciosConvenio(afiliado),
   };
 }
 
